@@ -68,6 +68,7 @@ export function evaluate(rows) {
     dataset: 'Synthetic demonstration; not real outlet validation',
   };
 }
+const demoEvaluation = evaluate(demoHistory());
 export function estimateOrder(db, order, { demo = false } = {}) {
   const hours =
     db
@@ -80,7 +81,7 @@ export function estimateOrder(db, order, { demo = false } = {}) {
     .get().n;
   const input = { serviceHours: hours, itemCount: order.expected_count, workload };
   if (demo) {
-    const result = evaluate(demoHistory());
+    const result = demoEvaluation;
     return {
       hours: Math.ceil(predict(result.weights, input)),
       method: 'Demo regression',

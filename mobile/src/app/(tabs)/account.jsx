@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useFocusEffect } from 'expo-router';
+import { useState, useCallback } from 'react';
 import { View, Text, Alert } from 'react-native';
 import { canOperate, STAGE_LABELS } from '@laundrytrack/core';
 import { useSession } from '../../lib/session';
@@ -42,6 +43,11 @@ export default function Account() {
   const [error, setError] = useState(null);
   const [message, setMessage] = useState('');
   const [count, setCount] = useState(pendingScans(user.id).length);
+  useFocusEffect(
+    useCallback(() => {
+      setCount(pendingScans(user.id).length);
+    }, [user.id]),
+  );
   async function signOut() {
     if (pendingScans(user.id).length) {
       setError(new Error('Sync or discard the saved scans before signing out.'));
