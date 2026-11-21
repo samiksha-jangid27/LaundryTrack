@@ -199,7 +199,7 @@ export function orderRouter(db) {
       403,
     );
     const code = String(randomInt(100000, 1000000));
-    const order = mutateOrder(db, req.params.id, req.user, 'delivery-code', req.body, (o) => {
+    const result = mutateOrder(db, req.params.id, req.user, 'delivery-code', req.body, (o) => {
       requireValue(!['cancelled', 'delivered'].includes(o.stage), 'Order is closed', 409);
       db.prepare('UPDATE orders SET delivery_code_hash=? WHERE id=?').run(digest(code), o.id);
       event(
@@ -209,8 +209,10 @@ export function orderRouter(db) {
         'delivery_code',
         'Customer generated a new delivery acknowledgement code',
       );
+      return { privateDeliveryCode: code };
     });
-    res.json({ order, deliveryCode: code });
+    const { privateDeliveryCode, ...order } = result;
+    res.json({ order, deliveryCode: privateDeliveryCode });
   });
   router.post('/:id/deliver', operator, (req, res) => {
     const { code, garmentIds } = z
@@ -283,15 +285,22 @@ export function orderRouter(db) {
       .object({ resolution: z.string().trim().min(10).max(1000) })
       .parse(req.body);
     res.json({
-      order: mutateOrder(db, req.params.id, req.user, 'resolve', req.body, (order) => {
-        const result = db
-          .prepare(
-            "UPDATE issues SET status='resolved',resolution=?,resolved_at=? WHERE id=? AND order_id=? AND status='open'",
-          )
-          .run(resolution, now(), req.params.issueId, order.id);
-        requireValue(result.changes === 1, 'Open issue not found', 404);
-        event(db, order.id, req.user, 'resolved', 'Outlet responded to a customer issue');
-      }),
+      order: mutateOrder(
+        db,
+        req.params.id,
+        req.user,
+        `resolve:${req.params.issueId}`,
+        req.body,
+        (order) => {
+          const result = db
+            .prepare(
+              "UPDATE issues SET status='resolved',resolution=?,resolved_at=? WHERE id=? AND order_id=? AND status='open'",
+            )
+            .run(resolution, now(), req.params.issueId, order.id);
+          requireValue(result.changes === 1, 'Open issue not found', 404);
+          event(db, order.id, req.user, 'resolved', 'Outlet responded to a customer issue');
+        },
+      ),
     });
   });
   router.get('/:id/tags/:garmentId', operator, async (req, res) => {

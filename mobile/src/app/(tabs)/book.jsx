@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import * as Crypto from 'expo-crypto';
+import { useState, useRef } from 'react';
 import { View, Text, Pressable, ScrollView } from 'react-native';
 import { router, Redirect } from 'expo-router';
 import { money, canOperate } from '@laundrytrack/core';
@@ -34,6 +35,7 @@ export default function Book() {
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState(null);
   const [created, setCreated] = useState(null);
+  const requestRef = useRef(null);
   if (canOperate(user)) return <Redirect href="/(tabs)/home" />;
   const services = data?.services || [];
   const count = Object.values(quantities).reduce((n, q) => n + q, 0);
@@ -48,9 +50,13 @@ export default function Book() {
     setFailure(null);
     setBusy(true);
     try {
+      const signature = JSON.stringify({ address, phone, pickupDate, slot, notes, quantities });
+      if (requestRef.current?.signature !== signature)
+        requestRef.current = { signature, id: Crypto.randomUUID() };
       const { order } = await api('/orders', {
         method: 'POST',
         body: {
+          requestId: requestRef.current.id,
           address,
           phone,
           pickupDate,

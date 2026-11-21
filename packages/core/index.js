@@ -46,6 +46,7 @@ export const registerSchema = loginSchema.extend({
   phone: z.string().regex(/^[6-9]\d{9}$/, 'Enter a valid 10-digit Indian mobile number'),
 });
 export const bookingSchema = z.object({
+  requestId: z.uuid().optional(),
   address: text(350),
   phone: z.string().regex(/^[6-9]\d{9}$/),
   pickupDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),

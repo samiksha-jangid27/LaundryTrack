@@ -44,6 +44,20 @@ export function orderDetail(db, id, user) {
 }
 export function createOrder(db, user, body) {
   const input = bookingSchema.parse(body);
+  const requestHash = digest(JSON.stringify(input));
+  if (input.requestId) {
+    const replay = db
+      .prepare('SELECT * FROM booking_requests WHERE request_id=?')
+      .get(input.requestId);
+    if (replay) {
+      requireValue(
+        replay.customer_id === user.id && replay.request_hash === requestHash,
+        'This booking request was already used. Check your orders before submitting another.',
+        409,
+      );
+      return JSON.parse(replay.response);
+    }
+  }
   const day = new Date(`${input.pickupDate}T00:00:00+05:30`);
   const today = new Date(
     new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' }) + 'T00:00:00+05:30',
@@ -99,7 +113,15 @@ export function createOrder(db, user, body) {
       );
     }
     event(db, id, user, 'booked', `Pickup booked for ${input.pickupDate}, ${input.slot}`);
-    return { ...orderDetail(db, id, user), deliveryCode };
+    const result = { ...orderDetail(db, id, user), deliveryCode };
+    if (input.requestId)
+      db.prepare('INSERT INTO booking_requests VALUES(?,?,?,?)').run(
+        input.requestId,
+        user.id,
+        requestHash,
+        JSON.stringify(result),
+      );
+    return result;
   });
 }
 function randomBytesNumber() {
@@ -112,23 +134,22 @@ export function mutateOrder(db, id, user, kind, body, fn) {
     const replay = db.prepare('SELECT * FROM actions WHERE event_id=?').get(eventId);
     if (replay) {
       requireValue(
-        replay.actor_id === user.id && replay.order_id === id && replay.kind === kind,
+        replay.actor_id === user.id &&
+          replay.order_id === id &&
+          replay.kind === kind &&
+          replay.request_hash === digest(JSON.stringify(body)),
         'Action ID already used',
         409,
       );
       return JSON.parse(replay.response);
     }
     requireValue(order.version === version, 'Order changed. Refresh and try again.', 409);
-    fn(order);
+    const extra = fn(order);
     db.prepare('UPDATE orders SET version=version+1,updated_at=? WHERE id=?').run(now(), id);
-    const result = orderDetail(db, id, user);
-    db.prepare('INSERT INTO actions VALUES(?,?,?,?,?)').run(
-      eventId,
-      user.id,
-      id,
-      kind,
-      JSON.stringify(result),
-    );
+    const result = { ...orderDetail(db, id, user), ...(extra || {}) };
+    db.prepare(
+      'INSERT INTO actions(event_id,actor_id,order_id,kind,response,request_hash) VALUES(?,?,?,?,?,?)',
+    ).run(eventId, user.id, id, kind, JSON.stringify(result), digest(JSON.stringify(body)));
     return result;
   });
 }

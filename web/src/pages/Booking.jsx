@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Minus, Plus, Shirt, CalendarDays, MapPin, ShieldCheck } from 'lucide-react';
 import { money } from '@laundrytrack/core';
 import { useResource } from '../hooks';
@@ -12,6 +12,7 @@ export default function Booking() {
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState(null);
   const [created, setCreated] = useState(null);
+  const requestRef = useRef(null);
   const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
   const max = new Date(Date.now() + 14 * 86400000).toLocaleDateString('en-CA', {
     timeZone: 'Asia/Kolkata',
@@ -29,10 +30,14 @@ export default function Booking() {
     setFailure(null);
     try {
       const fields = Object.fromEntries(new FormData(e.currentTarget));
+      const signature = JSON.stringify({ fields, quantities });
+      if (requestRef.current?.signature !== signature)
+        requestRef.current = { signature, id: crypto.randomUUID() };
       const { order } = await api('/orders', {
         method: 'POST',
         body: {
           ...fields,
+          requestId: requestRef.current.id,
           items: services
             .filter((s) => quantities[s.id])
             .map((s) => ({ serviceId: s.id, quantity: quantities[s.id] })),

@@ -1,8 +1,10 @@
 import { DatabaseSync } from 'node:sqlite';
 import { mkdirSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
+import { dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 export function openDatabase(
-  filename = process.env.DATABASE_PATH || resolve('data/laundrytrack.sqlite'),
+  filename = process.env.DATABASE_PATH ||
+    fileURLToPath(new URL('../data/laundrytrack.sqlite', import.meta.url)),
 ) {
   if (filename !== ':memory:') mkdirSync(dirname(filename), { recursive: true });
   const db = new DatabaseSync(filename);
@@ -34,6 +36,14 @@ CREATE TABLE IF NOT EXISTS issues(id TEXT PRIMARY KEY,order_id TEXT NOT NULL REF
 CREATE INDEX IF NOT EXISTS orders_customer ON orders(customer_id,created_at);
 CREATE INDEX IF NOT EXISTS events_order ON events(order_id,created_at);
 CREATE INDEX IF NOT EXISTS garments_order ON garments(order_id);
-PRAGMA user_version = 1;
+CREATE TABLE IF NOT EXISTS booking_requests(request_id TEXT PRIMARY KEY,customer_id TEXT NOT NULL REFERENCES users(id),request_hash TEXT NOT NULL,response TEXT NOT NULL);
 `);
+  if (
+    !db
+      .prepare('PRAGMA table_info(actions)')
+      .all()
+      .some((c) => c.name === 'request_hash')
+  )
+    db.exec('ALTER TABLE actions ADD COLUMN request_hash TEXT');
+  db.exec('PRAGMA user_version = 2');
 }
