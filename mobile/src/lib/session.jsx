@@ -1,6 +1,71 @@
-import {createContext,useContext,useState,useEffect} from 'react';
-import {api,secret,setToken,restoreBaseUrl} from './api';
-import {clearLocal} from './storage';
-const Context=createContext(null);
-export function SessionProvider({children}){const [user,setUser]=useState(null);const [loading,setLoading]=useState(true);const [demo,setDemo]=useState(false);useEffect(()=>{async function restore(){try{await restoreBaseUrl();const value=await secret.get('laundrytrack.session');if(value){const saved=JSON.parse(value);setToken(saved.token);try{const fresh=await api('/auth/me');setUser(fresh.user);}catch(e){if(e.offline)setUser(saved.user);else{setToken(null);await secret.remove('laundrytrack.session');}}}try{setDemo((await api('/health')).demo);}catch{}}finally{setLoading(false);}}restore();},[]);async function login(input,register=false){const result=await api(`/auth/${register?'register':'login'}`,{method:'POST',body:input});await secret.set('laundrytrack.session',JSON.stringify({token:result.token,user:result.user}));setToken(result.token);setUser(result.user);}async function logout(){try{await api('/auth/logout',{method:'POST'});}catch(e){if(!e.offline)throw e;}if(user)clearLocal(user.id);await secret.remove('laundrytrack.session');setToken(null);setUser(null);}async function refreshHealth(){const result=await api('/health');setDemo(result.demo);return result;}return <Context.Provider value={{user,loading,demo,login,logout,refreshHealth}}>{children}</Context.Provider>;}
-export const useSession=()=>useContext(Context);
+import { createContext, useContext, useState, useEffect } from 'react';
+import { api, secret, setToken, restoreBaseUrl } from './api';
+import { clearLocal } from './storage';
+const Context = createContext(null);
+export function SessionProvider({ children }) {
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [demo, setDemo] = useState(false);
+  useEffect(() => {
+    async function restore() {
+      try {
+        await restoreBaseUrl();
+        const value = await secret.get('laundrytrack.session');
+        if (value) {
+          const saved = JSON.parse(value);
+          setToken(saved.token);
+          try {
+            const fresh = await api('/auth/me');
+            setUser(fresh.user);
+          } catch (e) {
+            if (e.offline) setUser(saved.user);
+            else {
+              setToken(null);
+              await secret.remove('laundrytrack.session');
+            }
+          }
+        }
+        try {
+          setDemo((await api('/health')).demo);
+        } catch {}
+      } finally {
+        setLoading(false);
+      }
+    }
+    restore();
+  }, []);
+  async function login(input, register = false) {
+    const result = await api(`/auth/${register ? 'register' : 'login'}`, {
+      method: 'POST',
+      body: input,
+    });
+    await secret.set(
+      'laundrytrack.session',
+      JSON.stringify({ token: result.token, user: result.user }),
+    );
+    setToken(result.token);
+    setUser(result.user);
+  }
+  async function logout() {
+    try {
+      await api('/auth/logout', { method: 'POST' });
+    } catch (e) {
+      if (!e.offline) throw e;
+    }
+    if (user) clearLocal(user.id);
+    await secret.remove('laundrytrack.session');
+    setToken(null);
+    setUser(null);
+  }
+  async function refreshHealth() {
+    const result = await api('/health');
+    setDemo(result.demo);
+    return result;
+  }
+  return (
+    <Context.Provider value={{ user, loading, demo, login, logout, refreshHealth }}>
+      {children}
+    </Context.Provider>
+  );
+}
+export const useSession = () => useContext(Context);

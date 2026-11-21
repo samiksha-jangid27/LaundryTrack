@@ -1,6 +1,86 @@
-import {useState,useEffect} from 'react';
+import { useState, useEffect } from 'react';
 import QRCode from 'qrcode';
-import {Shirt,Printer,Check} from 'lucide-react';
-import {tagPayload} from '@laundrytrack/core';
-import {Button,Empty} from './UI';
-export default function Manifest({order,staff}){const [tags,setTags]=useState({});useEffect(()=>{let active=true;if(staff)Promise.all(order.garments.map(async g=>[g.id,await QRCode.toDataURL(tagPayload(g.id),{width:180,margin:1})])).then(rows=>{if(active)setTags(Object.fromEntries(rows));});return()=>{active=false;};},[order.garments,staff]);return <section className="section-card"><div className="section-heading"><div><h2>Every piece, accounted for</h2><p>{order.garments.length} registered / {order.expected_count} expected · {order.garments.filter(g=>g.packed).length} packed</p></div>{staff&&order.garments.length>0&&<Button variant="secondary" onClick={()=>window.print()}><Printer size={17}/>Print tags</Button>}</div>{order.garments.length?<div className="garment-grid">{order.garments.map(g=><div key={g.id} className="garment-card"><div className="garment-top"><span className="garment-icon"><Shirt size={28}/></span><span className={`garment-state ${g.delivered?'complete':''}`}>{g.delivered?'Returned':g.packed?'Packed':'In care'}</span></div><h3>{g.color} {g.type}</h3><code>{g.id.slice(0,8).toUpperCase()}</code>{g.note&&<p>{g.note}</p>}{staff&&tags[g.id]&&<div className="print-tag"><img src={tags[g.id]} alt={`QR label for ${g.color} ${g.type}`}/><span>{order.number}<br/>{g.id.slice(0,8).toUpperCase()}</span><small>{g.color} {g.type}</small></div>}</div>)}</div>:<Empty title="Your garment list is on its way">Each garment will appear here after collection and outlet intake.</Empty>}{staff&&<p className="footnote">Print on a tested wash-safe label. These codes identify garments; physical attachment and wash durability need an outlet pilot.</p>}</section>;}
+import { Shirt, Printer, Check } from 'lucide-react';
+import { tagPayload } from '@laundrytrack/core';
+import { Button, Empty } from './UI';
+export default function Manifest({ order, staff }) {
+  const [tags, setTags] = useState({});
+  useEffect(() => {
+    let active = true;
+    if (staff)
+      Promise.all(
+        order.garments.map(async (g) => [
+          g.id,
+          await QRCode.toDataURL(tagPayload(g.id), { width: 180, margin: 1 }),
+        ]),
+      ).then((rows) => {
+        if (active) setTags(Object.fromEntries(rows));
+      });
+    return () => {
+      active = false;
+    };
+  }, [order.garments, staff]);
+  return (
+    <section className="section-card">
+      <div className="section-heading">
+        <div>
+          <h2>Every piece, accounted for</h2>
+          <p>
+            {order.garments.length} registered / {order.expected_count} expected ·{' '}
+            {order.garments.filter((g) => g.packed).length} packed
+          </p>
+        </div>
+        {staff && order.garments.length > 0 && (
+          <Button variant="secondary" onClick={() => window.print()}>
+            <Printer size={17} />
+            Print tags
+          </Button>
+        )}
+      </div>
+      {order.garments.length ? (
+        <div className="garment-grid">
+          {order.garments.map((g) => (
+            <div key={g.id} className="garment-card">
+              <div className="garment-top">
+                <span className="garment-icon">
+                  <Shirt size={28} />
+                </span>
+                <span className={`garment-state ${g.delivered ? 'complete' : ''}`}>
+                  {g.delivered ? 'Returned' : g.packed ? 'Packed' : 'In care'}
+                </span>
+              </div>
+              <h3>
+                {g.color} {g.type}
+              </h3>
+              <code>{g.id.slice(0, 8).toUpperCase()}</code>
+              {g.note && <p>{g.note}</p>}
+              {staff && tags[g.id] && (
+                <div className="print-tag">
+                  <img src={tags[g.id]} alt={`QR label for ${g.color} ${g.type}`} />
+                  <span>
+                    {order.number}
+                    <br />
+                    {g.id.slice(0, 8).toUpperCase()}
+                  </span>
+                  <small>
+                    {g.color} {g.type}
+                  </small>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      ) : (
+        <Empty title="Your garment list is on its way">
+          Each garment will appear here after collection and outlet intake.
+        </Empty>
+      )}
+      {staff && (
+        <p className="footnote">
+          Print on a tested wash-safe label. These codes identify garments; physical attachment and
+          wash durability need an outlet pilot.
+        </p>
+      )}
+    </section>
+  );
+}

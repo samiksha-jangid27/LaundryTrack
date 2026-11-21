@@ -1,3 +1,31 @@
-import {useState,useEffect,useCallback} from 'react';
-import {api} from './api';
-export function useResource(path){const [data,setData]=useState(null);const [error,setError]=useState(null);const [loading,setLoading]=useState(true);const reload=useCallback(async()=>{try{const value=await api(path);setData(value);setError(null);return value;}catch(e){setError(e);}finally{setLoading(false);}},[path]);useEffect(()=>{setData(null);setLoading(true);reload();const interval=setInterval(reload,30000);window.addEventListener('focus',reload);return()=>{clearInterval(interval);window.removeEventListener('focus',reload);};},[reload]);return {data,error,loading,reload,setData};}
+import { useState, useEffect, useCallback } from 'react';
+import { api } from './api';
+export function useResource(path) {
+  const [data, setData] = useState(null);
+  const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const reload = useCallback(async () => {
+    try {
+      const value = await api(path);
+      setData(value);
+      setError(null);
+      return value;
+    } catch (e) {
+      setError(e);
+    } finally {
+      setLoading(false);
+    }
+  }, [path]);
+  useEffect(() => {
+    setData(null);
+    setLoading(true);
+    reload();
+    const interval = setInterval(reload, 30000);
+    window.addEventListener('focus', reload);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', reload);
+    };
+  }, [reload]);
+  return { data, error, loading, reload, setData };
+}

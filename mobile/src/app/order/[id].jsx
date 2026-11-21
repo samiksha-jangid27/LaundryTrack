@@ -1,14 +1,312 @@
-import {useState} from 'react';
-import {View,Text,Pressable} from 'react-native';
-import {Stack,useLocalSearchParams,Redirect} from 'expo-router';
+import { useState } from 'react';
+import { View, Text, Pressable } from 'react-native';
+import { Stack, useLocalSearchParams, Redirect } from 'expo-router';
 import * as Crypto from 'expo-crypto';
-import {STAGES,STAGE_LABELS,money,canOperate,dateLabel} from '@laundrytrack/core';
-import {useResource} from '../../lib/hooks';
-import {useSession} from '../../lib/session';
-import {api} from '../../lib/api';
-import {cacheGet,cacheSet} from '../../lib/storage';
-import {pendingScans,syncPending} from '../../lib/queue';
-import {Screen,Heading,Card,SectionTitle,Body,Button,Badge,Field,Feedback,Loading,Icon,colors,s} from '../../components/UI';
+import { STAGES, STAGE_LABELS, money, canOperate, dateLabel } from '@laundrytrack/core';
+import { useResource } from '../../lib/hooks';
+import { useSession } from '../../lib/session';
+import { api } from '../../lib/api';
+import { cacheGet, cacheSet } from '../../lib/storage';
+import { pendingScans, syncPending } from '../../lib/queue';
+import {
+  Screen,
+  Heading,
+  Card,
+  SectionTitle,
+  Body,
+  Button,
+  Badge,
+  Field,
+  Feedback,
+  Loading,
+  Icon,
+  colors,
+  s,
+} from '../../components/UI';
 import StaffControls from '../../components/StaffControls';
 import OrderIssues from '../../components/OrderIssues';
-export default function OrderDetail(){const {id}=useLocalSearchParams();const {user,loading:sessionLoading}=useSession();const staff=canOperate(user);const {data,setData,error,loading,offline,refreshing,reload}=useResource(`/orders/${id}`);const {data:estimate}=useResource(`/orders/${id}/estimate`);const [failure,setFailure]=useState(null);const [message,setMessage]=useState('');const [busy,setBusy]=useState(false);const [showEvents,setShowEvents]=useState(false);const [code,setCode]=useState(user?cacheGet(`${user.id}:delivery.${id}`):null);const [queueVersion,setQueueVersion]=useState(0);const pending=user?pendingScans(user.id).filter(a=>a.orderId===id).length:0;if(sessionLoading)return <Loading/>;if(!user)return <Redirect href="/"/>;async function act(route,values={}){if(busy)return false;setBusy(true);setFailure(null);setMessage('');try{const result=await api(`/orders/${id}/${route}`,{method:'POST',body:{eventId:Crypto.randomUUID(),version:data.order.version,...values}});setData({order:result.order});if(result.deliveryCode){setCode(result.deliveryCode);cacheSet(`${user.id}:delivery.${id}`,result.deliveryCode);}setMessage('Order updated. Handoff recorded.');return true;}catch(e){setFailure(e);if(e.status===409)await reload();return false;}finally{setBusy(false);}}if(loading)return <Loading/>;if(!data)return <Screen edges={['bottom']}><Feedback error={error}/><Button title="Try again" onPress={reload}/></Screen>;const order=data.order;const current=STAGES.indexOf(order.stage);return <Screen edges={['bottom']} refreshing={refreshing} onRefresh={reload}><Stack.Screen options={{title:order.number}}/><Heading eyebrow="Every detail, in one place" title={order.number} subtitle={`${staff?order.customer_name+' · ':''}${order.expected_count} garments · ${dateLabel(order.created_at)}`}/><View style={{marginBottom:22}}><Badge stage={order.stage}/></View><Feedback error={failure||(!offline&&error)} message={offline?'Saved snapshot. Connect before making custody changes.':message}/>{pending>0&&<Card style={{backgroundColor:'#fff5e4'}}><SectionTitle>{pending} scans waiting to sync</SectionTitle><Body>These pieces are saved on this phone. Server verification is still pending.</Body><Button busy={busy} title="Sync pending scans" onPress={async()=>{setBusy(true);const result=await syncPending(user.id);setQueueVersion(queueVersion+1);setFailure(result.error);setMessage(`${result.sent} scans verified. ${result.remaining} remaining.`);await reload();setBusy(false);}}/></Card>}<Card><SectionTitle>The care journey</SectionTitle>{STAGES.map((stage,index)=><View key={stage} style={{flexDirection:'row',gap:13,alignItems:'center',paddingVertical:11}}><View style={{width:25,height:25,borderRadius:13,alignItems:'center',justifyContent:'center',backgroundColor:index<=current?colors.green:'#f0f3e9'}}>{index<current?<Icon name="checkmark" color="white" size={15}/>:<View style={{width:7,height:7,borderRadius:4,backgroundColor:index===current?colors.lime:'#d9e2cd'}}/>}</View><Text style={{fontSize:13,fontWeight:index===current?'700':'400',color:index<=current?colors.ink:'#9baa8c'}}>{STAGE_LABELS[stage]}</Text></View>)}<Button variant="secondary" title={showEvents?'Hide handoff history':'View handoff history'} onPress={()=>setShowEvents(!showEvents)}/>{showEvents&&[...order.events].reverse().map(e=><View key={e.id} style={{marginTop:18,borderTopWidth:1,borderTopColor:colors.line,paddingTop:15}}><Body style={{color:colors.ink}}>{e.description}</Body><Text style={{fontSize:11,color:'#93a180',marginTop:7}}>{e.actor_name} · {new Date(e.created_at).toLocaleString('en-IN')}</Text></View>)}</Card>{staff&&<StaffControls order={order} act={act} busy={busy||offline} pending={pending} onError={setFailure}/>}<Card><SectionTitle>Every piece, accounted for</SectionTitle><Body>{order.garments.length} / {order.expected_count} registered · {order.garments.filter(g=>g.packed).length} packed</Body>{order.garments.length?order.garments.map(g=><View key={g.id} style={{borderTopWidth:1,borderTopColor:colors.line,marginTop:18,paddingTop:18}}><View style={s.row}><View style={{flexDirection:'row',alignItems:'center',gap:11,flex:1}}><Icon name="shirt-outline" size={26}/><Text style={{fontSize:14,fontWeight:'600',color:colors.ink,flex:1}}>{g.color} {g.type}</Text></View><Text style={{fontSize:11,color:'#829468'}}>{g.delivered?'Returned':g.packed?'Packed':'In care'}</Text></View><Text selectable style={{fontSize:11,color:'#93a47d',marginTop:9}}>{g.id.slice(0,8).toUpperCase()}</Text>{g.note&&<Body style={{marginTop:9,fontSize:12}}>{g.note}</Body>}</View>):<Body style={{marginTop:18}}>Your garment list appears after collection and outlet intake.</Body>}</Card><Card><SectionTitle>Care receipt</SectionTitle>{order.items.map(item=><View key={item.id} style={[s.row,{marginBottom:15}]}><Body>{item.name} × {item.quantity}</Body><Text style={{fontSize:14,fontWeight:'600',color:colors.ink}}>{money(item.price*item.quantity)}</Text></View>)}<View style={s.divider}/><View style={s.row}><SectionTitle>Total</SectionTitle><Text style={{fontSize:24,fontWeight:'600',color:colors.ink}}>{money(order.total)}</Text></View><Body style={{fontSize:12}}>Payment is settled directly with the outlet.</Body>{order.collected_count!=null&&<Body style={{marginTop:15}}>{order.collected_count} pieces accepted at pickup · {order.garments.filter(g=>g.delivered).length} returned</Body>}</Card><Card><SectionTitle>Your doorstep details</SectionTitle><Body>{order.address}</Body><Body style={{marginTop:12}}>{order.phone}</Body><Body style={{marginTop:12}}>{dateLabel(order.pickup_date+'T12:00:00')} · {order.slot}</Body>{order.notes&&<Body style={{marginTop:15}}>Care notes: {order.notes}</Body>}</Card>{!staff&&!['cancelled','delivered'].includes(order.stage)&&<Card style={{backgroundColor:'#eaf2de'}}><SectionTitle>Your private return code</SectionTitle>{code&&<Text selectable style={{fontSize:35,fontWeight:'700',letterSpacing:7,color:colors.green,marginBottom:16}}>{code}</Text>}<Body>Share this code only when receiving your clothes. A new code replaces the previous one.</Body><Button busy={busy} disabled={offline} variant="secondary" title={code?'Replace delivery code':'Generate delivery code'} onPress={()=>act('delivery-code')}/></Card>}{estimate?.estimate&&!['cancelled','delivered'].includes(order.stage)&&<Card style={{backgroundColor:'#f0f4e7'}}><SectionTitle>About {estimate.estimate.hours} hours of care</SectionTitle><Body>{estimate.estimate.detail}</Body><Text style={{fontSize:11,color:'#8d9e76',marginTop:14}}>{estimate.estimate.method} · from outlet intake</Text></Card>}<OrderIssues order={order} staff={staff} act={act} busy={busy||offline}/>{!staff&&order.stage==='booked'&&<Button busy={busy} variant="secondary" title="Cancel uncollected pickup" onPress={()=>act('cancel')}/>}</Screen>;}
+export default function OrderDetail() {
+  const { id } = useLocalSearchParams();
+  const { user, loading: sessionLoading } = useSession();
+  const staff = canOperate(user);
+  const { data, setData, error, loading, offline, refreshing, reload } = useResource(
+    `/orders/${id}`,
+  );
+  const { data: estimate } = useResource(`/orders/${id}/estimate`);
+  const [failure, setFailure] = useState(null);
+  const [message, setMessage] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [showEvents, setShowEvents] = useState(false);
+  const [code, setCode] = useState(user ? cacheGet(`${user.id}:delivery.${id}`) : null);
+  const [queueVersion, setQueueVersion] = useState(0);
+  const pending = user ? pendingScans(user.id).filter((a) => a.orderId === id).length : 0;
+  if (sessionLoading) return <Loading />;
+  if (!user) return <Redirect href="/" />;
+  async function act(route, values = {}) {
+    if (busy) return false;
+    setBusy(true);
+    setFailure(null);
+    setMessage('');
+    try {
+      const result = await api(`/orders/${id}/${route}`, {
+        method: 'POST',
+        body: { eventId: Crypto.randomUUID(), version: data.order.version, ...values },
+      });
+      setData({ order: result.order });
+      if (result.deliveryCode) {
+        setCode(result.deliveryCode);
+        cacheSet(`${user.id}:delivery.${id}`, result.deliveryCode);
+      }
+      setMessage('Order updated. Handoff recorded.');
+      return true;
+    } catch (e) {
+      setFailure(e);
+      if (e.status === 409) await reload();
+      return false;
+    } finally {
+      setBusy(false);
+    }
+  }
+  if (loading) return <Loading />;
+  if (!data)
+    return (
+      <Screen edges={['bottom']}>
+        <Feedback error={error} />
+        <Button title="Try again" onPress={reload} />
+      </Screen>
+    );
+  const order = data.order;
+  const current = STAGES.indexOf(order.stage);
+  return (
+    <Screen edges={['bottom']} refreshing={refreshing} onRefresh={reload}>
+      <Stack.Screen options={{ title: order.number }} />
+      <Heading
+        eyebrow="Every detail, in one place"
+        title={order.number}
+        subtitle={`${staff ? order.customer_name + ' · ' : ''}${order.expected_count} garments · ${dateLabel(order.created_at)}`}
+      />
+      <View style={{ marginBottom: 22 }}>
+        <Badge stage={order.stage} />
+      </View>
+      <Feedback
+        error={failure || (!offline && error)}
+        message={offline ? 'Saved snapshot. Connect before making custody changes.' : message}
+      />
+      {pending > 0 && (
+        <Card style={{ backgroundColor: '#fff5e4' }}>
+          <SectionTitle>{pending} scans waiting to sync</SectionTitle>
+          <Body>These pieces are saved on this phone. Server verification is still pending.</Body>
+          <Button
+            busy={busy}
+            title="Sync pending scans"
+            onPress={async () => {
+              setBusy(true);
+              const result = await syncPending(user.id);
+              setQueueVersion(queueVersion + 1);
+              setFailure(result.error);
+              setMessage(`${result.sent} scans verified. ${result.remaining} remaining.`);
+              await reload();
+              setBusy(false);
+            }}
+          />
+        </Card>
+      )}
+      <Card>
+        <SectionTitle>The care journey</SectionTitle>
+        {STAGES.map((stage, index) => (
+          <View
+            key={stage}
+            style={{ flexDirection: 'row', gap: 13, alignItems: 'center', paddingVertical: 11 }}
+          >
+            <View
+              style={{
+                width: 25,
+                height: 25,
+                borderRadius: 13,
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: index <= current ? colors.green : '#f0f3e9',
+              }}
+            >
+              {index < current ? (
+                <Icon name="checkmark" color="white" size={15} />
+              ) : (
+                <View
+                  style={{
+                    width: 7,
+                    height: 7,
+                    borderRadius: 4,
+                    backgroundColor: index === current ? colors.lime : '#d9e2cd',
+                  }}
+                />
+              )}
+            </View>
+            <Text
+              style={{
+                fontSize: 13,
+                fontWeight: index === current ? '700' : '400',
+                color: index <= current ? colors.ink : '#9baa8c',
+              }}
+            >
+              {STAGE_LABELS[stage]}
+            </Text>
+          </View>
+        ))}
+        <Button
+          variant="secondary"
+          title={showEvents ? 'Hide handoff history' : 'View handoff history'}
+          onPress={() => setShowEvents(!showEvents)}
+        />
+        {showEvents &&
+          [...order.events].reverse().map((e) => (
+            <View
+              key={e.id}
+              style={{
+                marginTop: 18,
+                borderTopWidth: 1,
+                borderTopColor: colors.line,
+                paddingTop: 15,
+              }}
+            >
+              <Body style={{ color: colors.ink }}>{e.description}</Body>
+              <Text style={{ fontSize: 11, color: '#93a180', marginTop: 7 }}>
+                {e.actor_name} · {new Date(e.created_at).toLocaleString('en-IN')}
+              </Text>
+            </View>
+          ))}
+      </Card>
+      {staff && (
+        <StaffControls
+          order={order}
+          act={act}
+          busy={busy || offline}
+          pending={pending}
+          onError={setFailure}
+        />
+      )}
+      <Card>
+        <SectionTitle>Every piece, accounted for</SectionTitle>
+        <Body>
+          {order.garments.length} / {order.expected_count} registered ·{' '}
+          {order.garments.filter((g) => g.packed).length} packed
+        </Body>
+        {order.garments.length ? (
+          order.garments.map((g) => (
+            <View
+              key={g.id}
+              style={{
+                borderTopWidth: 1,
+                borderTopColor: colors.line,
+                marginTop: 18,
+                paddingTop: 18,
+              }}
+            >
+              <View style={s.row}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 11, flex: 1 }}>
+                  <Icon name="shirt-outline" size={26} />
+                  <Text style={{ fontSize: 14, fontWeight: '600', color: colors.ink, flex: 1 }}>
+                    {g.color} {g.type}
+                  </Text>
+                </View>
+                <Text style={{ fontSize: 11, color: '#829468' }}>
+                  {g.delivered ? 'Returned' : g.packed ? 'Packed' : 'In care'}
+                </Text>
+              </View>
+              <Text selectable style={{ fontSize: 11, color: '#93a47d', marginTop: 9 }}>
+                {g.id.slice(0, 8).toUpperCase()}
+              </Text>
+              {g.note && <Body style={{ marginTop: 9, fontSize: 12 }}>{g.note}</Body>}
+            </View>
+          ))
+        ) : (
+          <Body style={{ marginTop: 18 }}>
+            Your garment list appears after collection and outlet intake.
+          </Body>
+        )}
+      </Card>
+      <Card>
+        <SectionTitle>Care receipt</SectionTitle>
+        {order.items.map((item) => (
+          <View key={item.id} style={[s.row, { marginBottom: 15 }]}>
+            <Body>
+              {item.name} × {item.quantity}
+            </Body>
+            <Text style={{ fontSize: 14, fontWeight: '600', color: colors.ink }}>
+              {money(item.price * item.quantity)}
+            </Text>
+          </View>
+        ))}
+        <View style={s.divider} />
+        <View style={s.row}>
+          <SectionTitle>Total</SectionTitle>
+          <Text style={{ fontSize: 24, fontWeight: '600', color: colors.ink }}>
+            {money(order.total)}
+          </Text>
+        </View>
+        <Body style={{ fontSize: 12 }}>Payment is settled directly with the outlet.</Body>
+        {order.collected_count != null && (
+          <Body style={{ marginTop: 15 }}>
+            {order.collected_count} pieces accepted at pickup ·{' '}
+            {order.garments.filter((g) => g.delivered).length} returned
+          </Body>
+        )}
+      </Card>
+      <Card>
+        <SectionTitle>Your doorstep details</SectionTitle>
+        <Body>{order.address}</Body>
+        <Body style={{ marginTop: 12 }}>{order.phone}</Body>
+        <Body style={{ marginTop: 12 }}>
+          {dateLabel(order.pickup_date + 'T12:00:00')} · {order.slot}
+        </Body>
+        {order.notes && <Body style={{ marginTop: 15 }}>Care notes: {order.notes}</Body>}
+      </Card>
+      {!staff && !['cancelled', 'delivered'].includes(order.stage) && (
+        <Card style={{ backgroundColor: '#eaf2de' }}>
+          <SectionTitle>Your private return code</SectionTitle>
+          {code && (
+            <Text
+              selectable
+              style={{
+                fontSize: 35,
+                fontWeight: '700',
+                letterSpacing: 7,
+                color: colors.green,
+                marginBottom: 16,
+              }}
+            >
+              {code}
+            </Text>
+          )}
+          <Body>
+            Share this code only when receiving your clothes. A new code replaces the previous one.
+          </Body>
+          <Button
+            busy={busy}
+            disabled={offline}
+            variant="secondary"
+            title={code ? 'Replace delivery code' : 'Generate delivery code'}
+            onPress={() => act('delivery-code')}
+          />
+        </Card>
+      )}
+      {estimate?.estimate && !['cancelled', 'delivered'].includes(order.stage) && (
+        <Card style={{ backgroundColor: '#f0f4e7' }}>
+          <SectionTitle>About {estimate.estimate.hours} hours of care</SectionTitle>
+          <Body>{estimate.estimate.detail}</Body>
+          <Text style={{ fontSize: 11, color: '#8d9e76', marginTop: 14 }}>
+            {estimate.estimate.method} · from outlet intake
+          </Text>
+        </Card>
+      )}
+      <OrderIssues order={order} staff={staff} act={act} busy={busy || offline} />
+      {!staff && order.stage === 'booked' && (
+        <Button
+          busy={busy}
+          variant="secondary"
+          title="Cancel uncollected pickup"
+          onPress={() => act('cancel')}
+        />
+      )}
+    </Screen>
+  );
+}

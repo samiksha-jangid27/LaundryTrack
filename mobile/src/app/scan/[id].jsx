@@ -1,11 +1,183 @@
-import {useState,useRef} from 'react';
-import {View,Text,StyleSheet} from 'react-native';
-import {CameraView,useCameraPermissions} from 'expo-camera';
-import {useLocalSearchParams,Redirect} from 'expo-router';
-import {parseTag,canOperate} from '@laundrytrack/core';
-import {useSession} from '../../lib/session';
-import {useResource} from '../../lib/hooks';
-import {scanGarment,pendingScans,syncPending} from '../../lib/queue';
-import {Screen,Heading,Card,Body,Button,Field,Feedback,Loading,Icon,colors} from '../../components/UI';
-export default function Scanner(){const {id}=useLocalSearchParams();const {user}=useSession();const {data,setData,error,loading,reload}=useResource(`/orders/${id}`);const [permission,requestPermission]=useCameraPermissions();const [manual,setManual]=useState('');const [failure,setFailure]=useState(null);const [message,setMessage]=useState('');const [locked,setLocked]=useState(false);const [busy,setBusy]=useState(false);const lock=useRef(false);const [queueCount,setQueueCount]=useState(user?pendingScans(user.id).length:0);if(!user)return <Redirect href="/"/>;if(!canOperate(user))return <Redirect href="/(tabs)/home"/>;async function scan(value){if(lock.current||!data)return;lock.current=true;setLocked(true);setBusy(true);setFailure(null);setMessage('');try{const garmentId=parseTag(value);if(!garmentId)throw new Error('This is not a LaundryTrack garment code.');const result=await scanGarment(user.id,data.order,garmentId);if(result.order)setData({order:result.order});setMessage(result.queued?'Saved on this phone. Connect and sync before marking the package ready.':'Garment verified. This piece belongs in this package.');setQueueCount(pendingScans(user.id).length);setManual('');}catch(e){setFailure(e);}finally{setBusy(false);}}function unlock(){lock.current=false;setLocked(false);setFailure(null);setMessage('');}if(loading)return <Loading/>;return <Screen edges={['bottom']}><Heading eyebrow="One scan. One careful check." title="Verify a garment." subtitle={data?`${data.order.number} · packing reconciliation`:'Loading order'}/><Feedback error={failure||error} message={message}/>{data?.order.stage!=='packing'?<Card><Body>This order is not in packing. Scanning is available during packing only.</Body></Card>:<>{permission?.granted?<View style={styles.cameraWrap}><CameraView style={StyleSheet.absoluteFillObject} facing="back" barcodeScannerSettings={{barcodeTypes:['qr']}} onBarcodeScanned={locked?undefined:({data:value})=>scan(value)}><View style={styles.frame}/><View style={styles.cameraLabel}><Icon name="scan-outline" color="white"/><Text style={{color:'white',fontSize:13}}>Centre one garment QR inside the frame</Text></View></CameraView></View>:<Card><Icon name="camera-outline" size={35}/><Body style={{marginTop:15}}>Allow camera access to scan garment labels. You can also enter a code below.</Body><Button title="Allow camera access" onPress={requestPermission}/>{permission&&!permission.canAskAgain&&<Body style={{marginTop:15}}>Camera access is disabled. Enable it in your device settings or use manual entry.</Body>}</Card>}{locked&&<Button title="Scan the next garment" busy={busy} onPress={unlock}/ >}<Card style={{marginTop:18}}><Field label="Or enter the full garment QR payload" value={manual} onChangeText={setManual} autoCapitalize="none" autoCorrect={false} placeholder="laundrytrack:garment:…"/><Button title="Verify entered code" busy={busy} disabled={!manual||locked} onPress={()=>scan(manual)}/></Card><Card><Body>{data?.order.garments.filter(g=>g.packed).length||0} / {data?.order.garments.length||0} pieces verified by the outlet.</Body><Body style={{marginTop:10}}>{queueCount} scans saved on this phone and awaiting sync.</Body>{queueCount>0&&<Button title="Sync saved scans" busy={busy} onPress={async()=>{setBusy(true);const result=await syncPending(user.id);setFailure(result.error);setMessage(`${result.sent} scans synced. ${result.remaining} remaining.`);setQueueCount(pendingScans(user.id).length);await reload();setBusy(false);}}/>}</Card></>}</Screen>;}
-const styles=StyleSheet.create({cameraWrap:{height:335,borderRadius:20,overflow:'hidden',backgroundColor:'#17382f'},frame:{position:'absolute',width:190,height:190,borderRadius:20,borderWidth:2,borderColor:'#ddf0ae',alignSelf:'center',top:48},cameraLabel:{position:'absolute',bottom:18,left:12,right:12,flexDirection:'row',gap:8,justifyContent:'center',alignItems:'center',backgroundColor:'#133b30b0',padding:12,borderRadius:9}});
+import { useState, useRef } from 'react';
+import { View, Text, StyleSheet } from 'react-native';
+import { CameraView, useCameraPermissions } from 'expo-camera';
+import { useLocalSearchParams, Redirect } from 'expo-router';
+import { parseTag, canOperate } from '@laundrytrack/core';
+import { useSession } from '../../lib/session';
+import { useResource } from '../../lib/hooks';
+import { scanGarment, pendingScans, syncPending } from '../../lib/queue';
+import {
+  Screen,
+  Heading,
+  Card,
+  Body,
+  Button,
+  Field,
+  Feedback,
+  Loading,
+  Icon,
+  colors,
+} from '../../components/UI';
+export default function Scanner() {
+  const { id } = useLocalSearchParams();
+  const { user } = useSession();
+  const { data, setData, error, loading, reload } = useResource(`/orders/${id}`);
+  const [permission, requestPermission] = useCameraPermissions();
+  const [manual, setManual] = useState('');
+  const [failure, setFailure] = useState(null);
+  const [message, setMessage] = useState('');
+  const [locked, setLocked] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const lock = useRef(false);
+  const [queueCount, setQueueCount] = useState(user ? pendingScans(user.id).length : 0);
+  if (!user) return <Redirect href="/" />;
+  if (!canOperate(user)) return <Redirect href="/(tabs)/home" />;
+  async function scan(value) {
+    if (lock.current || !data) return;
+    lock.current = true;
+    setLocked(true);
+    setBusy(true);
+    setFailure(null);
+    setMessage('');
+    try {
+      const garmentId = parseTag(value);
+      if (!garmentId) throw new Error('This is not a LaundryTrack garment code.');
+      const result = await scanGarment(user.id, data.order, garmentId);
+      if (result.order) setData({ order: result.order });
+      setMessage(
+        result.queued
+          ? 'Saved on this phone. Connect and sync before marking the package ready.'
+          : 'Garment verified. This piece belongs in this package.',
+      );
+      setQueueCount(pendingScans(user.id).length);
+      setManual('');
+    } catch (e) {
+      setFailure(e);
+    } finally {
+      setBusy(false);
+    }
+  }
+  function unlock() {
+    lock.current = false;
+    setLocked(false);
+    setFailure(null);
+    setMessage('');
+  }
+  if (loading) return <Loading />;
+  return (
+    <Screen edges={['bottom']}>
+      <Heading
+        eyebrow="One scan. One careful check."
+        title="Verify a garment."
+        subtitle={data ? `${data.order.number} · packing reconciliation` : 'Loading order'}
+      />
+      <Feedback error={failure || error} message={message} />
+      {data?.order.stage !== 'packing' ? (
+        <Card>
+          <Body>This order is not in packing. Scanning is available during packing only.</Body>
+        </Card>
+      ) : (
+        <>
+          {permission?.granted ? (
+            <View style={styles.cameraWrap}>
+              <CameraView
+                style={StyleSheet.absoluteFillObject}
+                facing="back"
+                barcodeScannerSettings={{ barcodeTypes: ['qr'] }}
+                onBarcodeScanned={locked ? undefined : ({ data: value }) => scan(value)}
+              >
+                <View style={styles.frame} />
+                <View style={styles.cameraLabel}>
+                  <Icon name="scan-outline" color="white" />
+                  <Text style={{ color: 'white', fontSize: 13 }}>
+                    Centre one garment QR inside the frame
+                  </Text>
+                </View>
+              </CameraView>
+            </View>
+          ) : (
+            <Card>
+              <Icon name="camera-outline" size={35} />
+              <Body style={{ marginTop: 15 }}>
+                Allow camera access to scan garment labels. You can also enter a code below.
+              </Body>
+              <Button title="Allow camera access" onPress={requestPermission} />
+              {permission && !permission.canAskAgain && (
+                <Body style={{ marginTop: 15 }}>
+                  Camera access is disabled. Enable it in your device settings or use manual entry.
+                </Body>
+              )}
+            </Card>
+          )}
+          {locked && <Button title="Scan the next garment" busy={busy} onPress={unlock} />}
+          <Card style={{ marginTop: 18 }}>
+            <Field
+              label="Or enter the full garment QR payload"
+              value={manual}
+              onChangeText={setManual}
+              autoCapitalize="none"
+              autoCorrect={false}
+              placeholder="laundrytrack:garment:…"
+            />
+            <Button
+              title="Verify entered code"
+              busy={busy}
+              disabled={!manual || locked}
+              onPress={() => scan(manual)}
+            />
+          </Card>
+          <Card>
+            <Body>
+              {data?.order.garments.filter((g) => g.packed).length || 0} /{' '}
+              {data?.order.garments.length || 0} pieces verified by the outlet.
+            </Body>
+            <Body style={{ marginTop: 10 }}>
+              {queueCount} scans saved on this phone and awaiting sync.
+            </Body>
+            {queueCount > 0 && (
+              <Button
+                title="Sync saved scans"
+                busy={busy}
+                onPress={async () => {
+                  setBusy(true);
+                  const result = await syncPending(user.id);
+                  setFailure(result.error);
+                  setMessage(`${result.sent} scans synced. ${result.remaining} remaining.`);
+                  setQueueCount(pendingScans(user.id).length);
+                  await reload();
+                  setBusy(false);
+                }}
+              />
+            )}
+          </Card>
+        </>
+      )}
+    </Screen>
+  );
+}
+const styles = StyleSheet.create({
+  cameraWrap: { height: 335, borderRadius: 20, overflow: 'hidden', backgroundColor: '#17382f' },
+  frame: {
+    position: 'absolute',
+    width: 190,
+    height: 190,
+    borderRadius: 20,
+    borderWidth: 2,
+    borderColor: '#ddf0ae',
+    alignSelf: 'center',
+    top: 48,
+  },
+  cameraLabel: {
+    position: 'absolute',
+    bottom: 18,
+    left: 12,
+    right: 12,
+    flexDirection: 'row',
+    gap: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#133b30b0',
+    padding: 12,
+    borderRadius: 9,
+  },
+});

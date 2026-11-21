@@ -3,15 +3,42 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "workspaces": ["server", "web", "mobile", "packages/*"],
+  "workspaces": [
+    "server",
+    "web",
+    "mobile",
+    "packages/*"
+  ],
   "scripts": {
     "dev": "concurrently -n api,web -c cyan,green \"npm run dev -w server\" \"npm run dev -w web\"",
     "start": "npm run start -w server",
     "seed": "npm run seed -w server",
-    "test": "node --test server/test/*.test.js packages/core/test/*.test.js",
+    "test": "node --test server/test/*.test.js packages/core/test/*.test.js mobile/test/*.test.mjs",
     "build": "npm run build -w web",
-    "mobile": "npm run start -w mobile"
+    "mobile": "npm run start -w mobile",
+    "demo": "cross-env DEMO_MODE=true npm run dev",
+    "model:evaluate": "node server/scripts/evaluate-model.js",
+    "lint": "eslint .",
+    "typecheck": "tsc --project jsconfig.json --noEmit",
+    "format": "prettier --write .",
+    "check": "npm run lint && npm run typecheck && npm test && npm run build"
   },
-  "engines": {"node": ">=22.18.0"},
-  "devDependencies": {"concurrently": "^9.2.1"}
+  "engines": {
+    "node": ">=22.18.0"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1",
+    "cross-env": "^10.1.0",
+    "prettier": "^3.8.1",
+    "typescript": "^5.9.3",
+    "eslint": "^9.39.2",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "globals": "^17.3.0",
+    "@babel/eslint-parser": "^7.28.6"
+  },
+  "overrides": {
+    "@expo/fingerprint": {
+      "minimatch": "^11.1.0"
+    }
+  }
 }

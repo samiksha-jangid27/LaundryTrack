@@ -1,13 +1,27 @@
 import { DatabaseSync } from 'node:sqlite';
 import { mkdirSync } from 'node:fs';
-import { dirname,resolve } from 'node:path';
-export function openDatabase(filename=process.env.DATABASE_PATH||resolve('data/laundrytrack.sqlite')) {
-  if(filename!==':memory:') mkdirSync(dirname(filename),{recursive:true});
-  const db=new DatabaseSync(filename); db.exec('PRAGMA foreign_keys = ON; PRAGMA journal_mode = WAL; PRAGMA busy_timeout = 5000;');
+import { dirname, resolve } from 'node:path';
+export function openDatabase(
+  filename = process.env.DATABASE_PATH || resolve('data/laundrytrack.sqlite'),
+) {
+  if (filename !== ':memory:') mkdirSync(dirname(filename), { recursive: true });
+  const db = new DatabaseSync(filename);
+  db.exec('PRAGMA foreign_keys = ON; PRAGMA journal_mode = WAL; PRAGMA busy_timeout = 5000;');
   return db;
 }
-export function transaction(db,fn) { db.exec('BEGIN IMMEDIATE');try {const result=fn();db.exec('COMMIT');return result;} catch(error){db.exec('ROLLBACK');throw error;} }
-export function migrate(db) {db.exec(`
+export function transaction(db, fn) {
+  db.exec('BEGIN IMMEDIATE');
+  try {
+    const result = fn();
+    db.exec('COMMIT');
+    return result;
+  } catch (error) {
+    db.exec('ROLLBACK');
+    throw error;
+  }
+}
+export function migrate(db) {
+  db.exec(`
 CREATE TABLE IF NOT EXISTS users(id TEXT PRIMARY KEY,name TEXT NOT NULL,email TEXT NOT NULL UNIQUE,phone TEXT NOT NULL,role TEXT NOT NULL CHECK(role IN ('customer','staff','owner')),password_hash TEXT NOT NULL,created_at TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS sessions(token_hash TEXT PRIMARY KEY,user_id TEXT NOT NULL REFERENCES users(id),expires_at TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS services(id TEXT PRIMARY KEY,name TEXT NOT NULL,description TEXT NOT NULL,unit TEXT NOT NULL,price INTEGER NOT NULL CHECK(price>=0),hours INTEGER NOT NULL,active INTEGER NOT NULL DEFAULT 1);
@@ -21,4 +35,5 @@ CREATE INDEX IF NOT EXISTS orders_customer ON orders(customer_id,created_at);
 CREATE INDEX IF NOT EXISTS events_order ON events(order_id,created_at);
 CREATE INDEX IF NOT EXISTS garments_order ON garments(order_id);
 PRAGMA user_version = 1;
-`);}
+`);
+}
