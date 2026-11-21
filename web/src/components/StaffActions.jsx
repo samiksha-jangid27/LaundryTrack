@@ -32,8 +32,8 @@ export default function StaffActions({ order, act, busy, onError }) {
         <Field label="Assigned team member">
           <select
             name="staffId"
-            key={order.assigned_to}
-            defaultValue={order.assigned_to || ''}
+            value={assignee}
+            onChange={(e) => setAssignee(e.target.value)}
             required
           >
             <option value="" disabled>

@@ -39,7 +39,8 @@
           "cameraPermission": "Allow LaundryTrack to scan garment QR labels during outlet packing.",
           "recordAudioAndroid": false
         }
-      ]
+      ],
+      "expo-build-properties"
     ],
     "scheme": "laundrytrack",
     "backgroundColor": "#f5f7f1"
