@@ -53,7 +53,7 @@ export default function Home() {
         <Text style={styles.heroTitle}>
           {staff ? 'Every piece.\nEvery handoff.' : 'A little less laundry.\nA little more life.'}
         </Text>
-        <Body style={{ maxWidth: '75%', color: '#7c8f65', marginTop: 12 }}>
+        <Body style={{ maxWidth: '75%', color: '#62764b', marginTop: 12 }}>
           {staff
             ? 'Register what comes in. Verify what goes out.'
             : 'Book a pickup and follow the care journey, from your door and back.'}

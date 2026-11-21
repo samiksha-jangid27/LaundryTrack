@@ -16,7 +16,7 @@ import { STAGE_LABELS } from '@laundrytrack/core';
 export const colors = {
   ink: '#213e35',
   green: '#15584e',
-  muted: '#7b8b78',
+  muted: '#63735d',
   lime: '#d7eda8',
   bg: '#f5f7f1',
   line: '#e0e6d9',
@@ -170,7 +170,7 @@ export const s = StyleSheet.create({
     fontSize: 10,
     fontWeight: '700',
     letterSpacing: 1.9,
-    color: '#81936c',
+    color: '#607248',
     marginBottom: 12,
   },
   title: {
