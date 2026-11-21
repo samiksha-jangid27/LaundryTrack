@@ -27,7 +27,13 @@ This creates Hermes bundles for Android/iOS and the React Native web export. It 
 
 ## Native Android
 
-With Android SDK, compatible NDK/CMake, JDK and an emulator/device configured:
+With Android SDK, compatible NDK/CMake, JDK and an emulator/device configured. On macOS, if terminal Java is not configured but Android Studio is installed, use its bundled JDK before running the commands below:
+
+```sh
+export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home"
+```
+
+The tested local Android toolchain used SDK platform 37.0, build tools 37.0.0, NDK 27.1.12297006 and CMake 3.22.1. Those missing components were added alongside the existing SDK versions on this machine; existing versions were preserved.
 
 ```sh
 cd mobile
