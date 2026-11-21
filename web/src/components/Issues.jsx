@@ -4,7 +4,7 @@ import { Button, Field } from './UI';
 export default function Issues({ order, staff, act, busy }) {
   const [show, setShow] = useState(false);
   return (
-    <section className="section-card">
+    <section className="section-card issues-card">
       <div className="section-heading">
         <div>
           <h2>

@@ -2121,3 +2121,9 @@ footer {
     display: none;
   }
 }
+
+@media print {
+  .issues-card {
+    display: none !important;
+  }
+}
