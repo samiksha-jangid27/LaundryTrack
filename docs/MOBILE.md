@@ -53,3 +53,7 @@ The preview profile produces an APK. The production profile sets APP_VARIANT=pro
 Use `npx expo run:ios` with a working Xcode simulator/runtime, or `npx eas-cli@latest build --platform ios --profile production` with your own Expo/Apple signing setup. Physical iOS installation and store submission need the appropriate credentials and provisioning. Bundle validation alone does not verify an installed iOS app.
 
 Camera QR scanning needs a physical-device check. The app requests permission when the user opens the scanner; it has a denial explanation and manual-code fallback. QR values can be found in the staff web manifest under “Manual scan code” for a hardware-free demonstration.
+
+## macOS synced-folder builds
+
+Build native iOS projects from a checkout outside cloud-synced Desktop/Documents folders. macOS File Provider can attach Finder metadata to generated frameworks, which causes nested framework signing to fail with “resource fork, Finder information, or similar detritus not allowed”. A clean local checkout outside the synced folder avoids copying this metadata into build products. The app source does not need to be changed for this environment issue.
