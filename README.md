@@ -19,11 +19,11 @@ npm run demo
 
 Open **http://localhost:5173**. Demo mode seeds fictional customer, staff and owner accounts on first launch. Use the three demo buttons, or:
 
-| View | Email | Password |
-| --- | --- | --- |
-| Customer | `customer@laundrytrack.demo` | `FreshStart!2026` |
-| Outlet team | `staff@laundrytrack.demo` | `FreshStart!2026` |
-| Owner | `owner@laundrytrack.demo` | `FreshStart!2026` |
+| View        | Email                        | Password          |
+| ----------- | ---------------------------- | ----------------- |
+| Customer    | `customer@laundrytrack.demo` | `FreshStart!2026` |
+| Outlet team | `staff@laundrytrack.demo`    | `FreshStart!2026` |
+| Owner       | `owner@laundrytrack.demo`    | `FreshStart!2026` |
 
 **Demo accounts are public sample credentials. Enable demo mode only for fictional data in a local or isolated demonstration.** `npm run dev` starts without automatically creating demo accounts; it does not remove accounts already seeded in the selected database. Use a separate, empty database for real data.
 
@@ -37,11 +37,11 @@ npm run mobile
 
 Open the project in a matching **Expo SDK 58** client, or create a development build. A physical phone and laptop must share Wi-Fi. The app infers the development server’s LAN address when Expo provides it. If it cannot connect, open **API connection settings** on the sign-in screen:
 
-| Device | API address |
-| --- | --- |
-| Physical phone | `http://YOUR_COMPUTER_LAN_IP:4000` |
-| Android emulator | `http://10.0.2.2:4000` |
-| iOS simulator | `http://localhost:4000` |
+| Device           | API address                        |
+| ---------------- | ---------------------------------- |
+| Physical phone   | `http://YOUR_COMPUTER_LAN_IP:4000` |
+| Android emulator | `http://10.0.2.2:4000`             |
+| iOS simulator    | `http://localhost:4000`            |
 
 Alternatively copy `mobile/.env.example` to `mobile/.env` and set `EXPO_PUBLIC_API_URL`. This is public configuration, never a place for credentials. Restart Metro after changing it.
 

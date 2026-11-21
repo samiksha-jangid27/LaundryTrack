@@ -13,7 +13,17 @@ export default ({ config }) => {
     },
     plugins: [
       ...config.plugins.filter((p) => (Array.isArray(p) ? p[0] : p) !== 'expo-build-properties'),
-      ['expo-build-properties', { android: { usesCleartextTraffic: !production } }],
+      [
+        'expo-build-properties',
+        {
+          android: {
+            usesCleartextTraffic: !production,
+            compileSdkVersion: 36,
+            buildToolsVersion: '36.0.0',
+            targetSdkVersion: 36,
+          },
+        },
+      ],
     ],
   };
 };

@@ -4,12 +4,12 @@ Base path `/api`. JSON errors contain `error` and, where available, `code`. Auth
 
 ## Public
 
-| Method | Route | Purpose |
-| --- | --- | --- |
-| GET | `/health` | Health, version, explicit demo flag |
-| GET | `/services` | Active catalog and integer-paise prices |
-| POST | `/auth/register` | Customer account: name, email, phone, password (10+ characters) |
-| POST | `/auth/login` | Session: email and password |
+| Method | Route            | Purpose                                                         |
+| ------ | ---------------- | --------------------------------------------------------------- |
+| GET    | `/health`        | Health, version, explicit demo flag                             |
+| GET    | `/services`      | Active catalog and integer-paise prices                         |
+| POST   | `/auth/register` | Customer account: name, email, phone, password (10+ characters) |
+| POST   | `/auth/login`    | Session: email and password                                     |
 
 ## Session
 
@@ -17,24 +17,24 @@ Base path `/api`. JSON errors contain `error` and, where available, `code`. Auth
 
 ## Orders
 
-| Method | Route | Access / behavior |
-| --- | --- | --- |
-| GET | `/orders` | Customer’s own orders; outlet can list all (latest 500) |
-| POST | `/orders` | Customer: items `{serviceId,quantity}`, address, phone, pickupDate, slot, notes, optional UUID requestId |
-| GET | `/orders/:id` | Manifest, price snapshots, history, issues; customer ownership enforced |
-| GET | `/orders/:id/estimate` | Planning estimate and its data source |
-| POST | `/orders/:id/cancel` | Before collection only |
-| POST | `/orders/:id/assign` | Outlet: staffId |
-| POST | `/orders/:id/collect` | Outlet: physical count |
-| POST | `/orders/:id/garments` | Outlet: type, color, optional note |
-| POST | `/orders/:id/advance` | Outlet: next valid stage, invariant checks |
-| POST | `/orders/:id/scan` | Outlet: garmentId, correct order and no duplicate |
-| POST | `/orders/:id/unpack` | Outlet: garmentId, packing recheck |
-| POST | `/orders/:id/delivery-code` | Customer only: generate/replace return acknowledgement code |
-| POST | `/orders/:id/deliver` | Outlet: code and garmentIds actually handed over |
-| POST | `/orders/:id/issues` | Customer: category, message, optional garmentId |
-| POST | `/orders/:id/issues/:issueId/resolve` | Outlet: resolution |
-| GET | `/orders/:id/tags/:garmentId` | Outlet: SVG QR label |
+| Method | Route                                 | Access / behavior                                                                                        |
+| ------ | ------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| GET    | `/orders`                             | Customer’s own orders; outlet can list all (latest 500)                                                  |
+| POST   | `/orders`                             | Customer: items `{serviceId,quantity}`, address, phone, pickupDate, slot, notes, optional UUID requestId |
+| GET    | `/orders/:id`                         | Manifest, price snapshots, history, issues; customer ownership enforced                                  |
+| GET    | `/orders/:id/estimate`                | Planning estimate and its data source                                                                    |
+| POST   | `/orders/:id/cancel`                  | Before collection only                                                                                   |
+| POST   | `/orders/:id/assign`                  | Outlet: staffId                                                                                          |
+| POST   | `/orders/:id/collect`                 | Outlet: physical count                                                                                   |
+| POST   | `/orders/:id/garments`                | Outlet: type, color, optional note                                                                       |
+| POST   | `/orders/:id/advance`                 | Outlet: next valid stage, invariant checks                                                               |
+| POST   | `/orders/:id/scan`                    | Outlet: garmentId, correct order and no duplicate                                                        |
+| POST   | `/orders/:id/unpack`                  | Outlet: garmentId, packing recheck                                                                       |
+| POST   | `/orders/:id/delivery-code`           | Customer only: generate/replace return acknowledgement code                                              |
+| POST   | `/orders/:id/deliver`                 | Outlet: code and garmentIds actually handed over                                                         |
+| POST   | `/orders/:id/issues`                  | Customer: category, message, optional garmentId                                                          |
+| POST   | `/orders/:id/issues/:issueId/resolve` | Outlet: resolution                                                                                       |
+| GET    | `/orders/:id/tags/:garmentId`         | Outlet: SVG QR label                                                                                     |
 
 Every order mutation after booking requires `{eventId: UUID, version: currentOrderVersion, ...operationFields}`. Preserve the entire request for retries. Successful replay returns the original response. For a 409 caused by another action, fetch the latest order and review the physical work before creating a new action ID.
 
