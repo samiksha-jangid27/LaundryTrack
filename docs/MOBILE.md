@@ -35,7 +35,7 @@ npx expo prebuild --platform android
 npx expo run:android
 ```
 
-The project explicitly uses Android compile SDK 36 / build tools 36.0.0 and target SDK 36, available in the tested local toolchain. Native directories are generated and ignored. Customize app.json/app.config.js and config plugins rather than hand-editing generated code.
+The project explicitly uses Android compile SDK 37 / build tools 37.0.0 and target SDK 36, as required by Expo SDK 58. The SDK manager platform package is named `platforms;android-37.0` (including the minor version). Native directories are generated and ignored. Customize app.json/app.config.js and config plugins rather than hand-editing generated code.
 
 The default local/pilot configuration permits an HTTP LAN API. APP_VARIANT=production disables Android cleartext and removes the iOS arbitrary-load exception; provide a real HTTPS API address for that build.
 

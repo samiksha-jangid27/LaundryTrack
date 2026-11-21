@@ -18,8 +18,8 @@ export default ({ config }) => {
         {
           android: {
             usesCleartextTraffic: !production,
-            compileSdkVersion: 36,
-            buildToolsVersion: '36.0.0',
+            compileSdkVersion: 37,
+            buildToolsVersion: '37.0.0',
             targetSdkVersion: 36,
           },
         },
