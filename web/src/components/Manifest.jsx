@@ -54,6 +54,12 @@ export default function Manifest({ order, staff }) {
               </h3>
               <code>{g.id.slice(0, 8).toUpperCase()}</code>
               {g.note && <p>{g.note}</p>}
+              {staff && (
+                <details className="manual-tag">
+                  <summary>Manual scan code</summary>
+                  <code>{tagPayload(g.id)}</code>
+                </details>
+              )}
               {staff && tags[g.id] && (
                 <div className="print-tag">
                   <img src={tags[g.id]} alt={`QR label for ${g.color} ${g.type}`} />

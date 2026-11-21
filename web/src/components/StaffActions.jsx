@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ScanLine, ClipboardCheck, Truck, UserRoundCheck } from 'lucide-react';
 import { nextStage, STAGE_LABELS, parseTag } from '@laundrytrack/core';
 import { useResource } from '../hooks';
@@ -6,6 +6,8 @@ import { Button, Field } from './UI';
 export default function StaffActions({ order, act, busy, onError }) {
   const { data } = useResource('/outlet/staff');
   const [scan, setScan] = useState('');
+  const [assignee, setAssignee] = useState(order.assigned_to || '');
+  useEffect(() => setAssignee(order.assigned_to || ''), [order.assigned_to]);
   const [selected, setSelected] = useState([]);
   const [code, setCode] = useState('');
   if (['delivered', 'cancelled'].includes(order.stage)) return null;

@@ -2102,3 +2102,22 @@ footer {
     display: none;
   }
 }
+
+.manual-tag {
+  margin-top: 14px;
+  font-size: 0.8rem;
+  color: #63834d;
+}
+.manual-tag summary {
+  cursor: pointer;
+}
+.manual-tag code {
+  overflow-wrap: anywhere;
+  font-size: 0.75rem;
+  line-height: 1.6;
+}
+@media print {
+  .manual-tag {
+    display: none;
+  }
+}

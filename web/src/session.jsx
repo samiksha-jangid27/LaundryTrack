@@ -28,6 +28,9 @@ export function SessionProvider({ children }) {
     } finally {
       setToken(null);
       setUser(null);
+      location.hash = 'home';
+      for (const key of Object.keys(sessionStorage).filter((k) => k.startsWith('delivery.')))
+        sessionStorage.removeItem(key);
     }
   }
   return (

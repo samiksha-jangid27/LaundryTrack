@@ -71,9 +71,7 @@ export function Shell({ route, children }) {
           >
             {open ? <X /> : <Menu />}
           </button>
-          <span className="topbar-title">
-            {staff ? 'Maple outlet' : 'Less laundry. More life.'}
-          </span>
+          <span className="topbar-title">{staff ? 'Your outlet' : 'Less laundry. More life.'}</span>
           <div className="topbar-right">
             {demo && <span className="demo-chip">Demo workspace</span>}
             <span className="outlet-chip">
