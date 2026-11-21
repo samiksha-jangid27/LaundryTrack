@@ -23,7 +23,8 @@
     "format": "prettier --write .",
     "check": "npm run lint && npm run typecheck && npm test && npm run build",
     "assets": "node scripts/render-assets.mjs",
-    "mobile:export": "npm exec -w mobile -- expo export --platform all --max-workers 2"
+    "mobile:export": "npm exec -w mobile -- expo export --platform all --max-workers 2",
+    "staff:create": "node server/scripts/create-staff.js"
   },
   "engines": {
     "node": ">=22.18.0"
