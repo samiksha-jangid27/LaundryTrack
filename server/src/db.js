@@ -11,14 +11,18 @@ export function openDatabase(
   db.exec('PRAGMA foreign_keys = ON; PRAGMA journal_mode = WAL; PRAGMA busy_timeout = 5000;');
   return db;
 }
+let savepointCounter = 0;
 export function transaction(db, fn) {
-  db.exec('BEGIN IMMEDIATE');
+  const nested = db.isTransaction;
+  const savepoint = `laundrytrack_${++savepointCounter}`;
+  db.exec(nested ? `SAVEPOINT ${savepoint}` : 'BEGIN IMMEDIATE');
   try {
     const result = fn();
-    db.exec('COMMIT');
+    db.exec(nested ? `RELEASE SAVEPOINT ${savepoint}` : 'COMMIT');
     return result;
   } catch (error) {
-    db.exec('ROLLBACK');
+    if (nested) db.exec(`ROLLBACK TO SAVEPOINT ${savepoint}; RELEASE SAVEPOINT ${savepoint}`);
+    else db.exec('ROLLBACK');
     throw error;
   }
 }
