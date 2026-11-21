@@ -35,7 +35,7 @@ Date: **21 November 2026**. Source and screenshots use fictional demo records.
 
 The pilot APK is [`LaundryTrack-pilot-arm64.apk`](https://github.com/samiksha-jangid27/LaundryTrack/releases/download/v1.0.0-pilot/LaundryTrack-pilot-arm64.apk) in the published GitHub pilot release. The public download was fetched independently and its SHA-256 matched the local APK. Its SHA-256, exact size, source revision, ABI, SDK levels, signing status and permissions are recorded in [ANDROID-BUILD.json](ANDROID-BUILD.json).
 
-It is **debug-signed** for project demonstration, with release-mode bundled JavaScript. It needs a running LaundryTrack API; it is not an independently hosted laundry service or a store-distributed production build. Native device launch, camera decoding and real-device SQLite/SecureStore behavior are pending checks.
+It is **debug-signed** for project demonstration, with release-mode bundled JavaScript. It needs a running LaundryTrack API; it is not an independently hosted laundry service or a store-distributed production build. Native Android emulator installation/startup has been checked. Physical-device camera decoding and full native offline workflows still require device-level checks.
 
 ## Boundaries
 
