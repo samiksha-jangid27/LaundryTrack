@@ -12,3 +12,6 @@ mobile/ios/
 mobile/android/
 test-results/
 playwright-report/
+
+# Locally built installable apps; published binaries live in GitHub Releases.
+artifacts/
