@@ -27,14 +27,15 @@
     "node": ">=22.18.0"
   },
   "devDependencies": {
+    "@babel/eslint-parser": "^7.28.6",
     "concurrently": "^9.2.1",
     "cross-env": "^10.1.0",
-    "prettier": "^3.8.1",
-    "typescript": "^5.9.3",
     "eslint": "^9.39.2",
     "eslint-plugin-react-hooks": "^7.0.1",
     "globals": "^17.3.0",
-    "@babel/eslint-parser": "^7.28.6"
+    "prettier": "^3.8.1",
+    "sharp": "^0.35.5",
+    "typescript": "^5.9.3"
   },
   "overrides": {
     "@expo/fingerprint": {
