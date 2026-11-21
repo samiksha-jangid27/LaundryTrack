@@ -22,7 +22,16 @@ export const colors = {
   line: '#e0e6d9',
 };
 export function Icon({ name, size = 22, color = colors.green }) {
-  return <Ionicons name={name} size={size} color={color} />;
+  return (
+    <Ionicons
+      name={name}
+      size={size}
+      color={color}
+      accessible={false}
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+    />
+  );
 }
 export function Screen({ children, refreshing = false, onRefresh, edges = ['top'], style }) {
   return (
@@ -79,6 +88,7 @@ export function Button({ title, onPress, busy, disabled, variant, icon, style })
   return (
     <Pressable
       accessibilityRole="button"
+      accessibilityLabel={title}
       accessibilityState={{ disabled: !!(disabled || busy), busy: !!busy }}
       disabled={disabled || busy}
       onPress={onPress}
