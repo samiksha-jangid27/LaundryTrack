@@ -1,3 +1,4 @@
+import {estimateOrder} from './estimates.js';
 import {Router} from 'express';
 import {z} from 'zod';
 import {nextStage,garmentSchema,issueSchema} from '@laundrytrack/core';
@@ -10,6 +11,7 @@ import {requireValue,HttpError} from './errors.js';
 export function orderRouter(db){const router=Router();
  router.get('/',(req,res)=>{const where=req.user.role==='customer'?'WHERE o.customer_id=?':'';const rows=db.prepare(`SELECT o.id,o.number,o.stage,o.total,o.pickup_date,o.slot,o.expected_count,o.created_at,o.version,u.name customer_name,(SELECT COUNT(*) FROM garments g WHERE g.order_id=o.id) garment_count FROM orders o JOIN users u ON u.id=o.customer_id ${where} ORDER BY o.created_at DESC LIMIT 500`).all(...(where?[req.user.id]:[]));res.json({orders:rows});});
  router.post('/',(req,res)=>{requireValue(req.user.role==='customer','Sign in as a customer to book a pickup',403);res.status(201).json({order:createOrder(db,req.user,req.body)});});
+ router.get('/:id/estimate',(req,res)=>res.json({estimate:estimateOrder(db,accessibleOrder(db,req.params.id,req.user),{demo:req.app.locals.demo})}));
  router.get('/:id',(req,res)=>res.json({order:orderDetail(db,req.params.id,req.user)}));
  router.post('/:id/cancel',(req,res)=>res.json({order:mutateOrder(db,req.params.id,req.user,'cancel',req.body,order=>{requireValue(order.stage==='booked','Only uncollected bookings can be cancelled',409);db.prepare("UPDATE orders SET stage='cancelled' WHERE id=?").run(order.id);event(db,order.id,req.user,'cancelled','Pickup cancelled');})}));
  router.post('/:id/assign',operator,(req,res)=>{const {staffId}=z.object({staffId:z.uuid()}).parse(req.body);const staff=db.prepare("SELECT id,name FROM users WHERE id=? AND role IN ('staff','owner')").get(staffId);requireValue(staff,'Staff member not found',404);res.json({order:mutateOrder(db,req.params.id,req.user,'assign',req.body,order=>{requireValue(!['cancelled','delivered'].includes(order.stage),'Order is closed',409);db.prepare('UPDATE orders SET assigned_to=? WHERE id=?').run(staff.id,order.id);event(db,order.id,req.user,'assigned',`Assigned to ${staff.name}`);})});});
