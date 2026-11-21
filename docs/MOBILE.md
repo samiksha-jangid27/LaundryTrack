@@ -57,3 +57,15 @@ Camera QR scanning needs a physical-device check. The app requests permission wh
 ## macOS synced-folder builds
 
 Build native iOS projects from a checkout outside cloud-synced Desktop/Documents folders. macOS File Provider can attach Finder metadata to generated frameworks, which causes nested framework signing to fail with “resource fork, Finder information, or similar detritus not allowed”. A clean local checkout outside the synced folder avoids copying this metadata into build products. The app source does not need to be changed for this environment issue.
+
+## Run the published iOS simulator app
+
+Download `LaundryTrack-ios-simulator-arm64.zip` from the pilot release. On an Apple Silicon Mac, extract it to a nonsynced temporary directory, boot an iOS Simulator in Xcode/Simulator, and run:
+
+```sh
+ditto -x -k artifacts/LaundryTrack-ios-simulator-arm64.zip /tmp/laundrytrack-simulator-app
+xcrun simctl install booted /tmp/laundrytrack-simulator-app/LaundryTrack.app
+xcrun simctl launch booted com.samikshajangid.laundrytrack
+```
+
+Keep the API running. The simulator uses `http://localhost:4000` by default. The archive has bundled JavaScript and does not need Metro for this pilot run. It cannot be installed on a physical iPhone; use a matching Expo client or your own Apple provisioning/build setup there.

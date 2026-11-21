@@ -11,10 +11,10 @@ Date: **21 November 2026**. Source and screenshots use fictional demo records.
 | Android export                              | Hermes bundle generated successfully                                                                                                                                                                  |
 | iOS export                                  | Hermes bundle generated successfully                                                                                                                                                                  |
 | React Native web export                     | Static export passed; customer/staff routes exercised in the browser                                                                                                                                  |
-| Native Android                              | `:app:assembleRelease` passed for ARM64; APK signature and manifest verified                                                                                                                          |
+| Native Android                              | ARM64 release assembly/signature/manifest verified; installed and cold-launched on Android API 36; process remained running with no captured AndroidRuntime/ReactNativeJS errors                      |
 | APK permissions                             | Camera, internet, network-state and the app-private receiver permission; storage/overlay/audio/biometric permissions removed                                                                          |
 | iOS dependencies                            | CocoaPods install completed with native modules and code generation                                                                                                                                   |
-| Native iOS                                  | **Not verified.** xcodebuild reported workspace recognition errors and CoreSimulator service connection failures in this environment                                                                  |
+| Native iOS                                  | ARM64 Release build passed with Xcode 26.4 outside the synced folder; installed/launched on iOS 18.6; iOS 26.4 launch also returned a process ID; native SQLite created cache/pending tables          |
 | Physical-device camera and wash-safe labels | **Not performed.** Requires a real phone and an outlet/material pilot                                                                                                                                 |
 
 ## Browser checks performed
@@ -40,3 +40,9 @@ It is **debug-signed** for project demonstration, with release-mode bundled Java
 ## Boundaries
 
 No claim is made about real customers served, measured garment-loss reduction, load capacity, validated delivery prediction, payment settlement, push/SMS delivery, GPS accuracy or physical label durability. All completion-model metrics describe the explicitly synthetic experiment. A successful bundle/build is recorded separately from device/runtime validation.
+
+## iOS simulator artifact
+
+The [ARM64 simulator archive](https://github.com/samiksha-jangid27/LaundryTrack/releases/download/v1.0.0-pilot/LaundryTrack-ios-simulator-arm64.zip) contains a standalone Release-mode `LaundryTrack.app` with bundled JavaScript. It is for an Apple Silicon Mac's iOS Simulator, **not an IPA for a physical iPhone**. Exact metadata and checksum are in [IOS-BUILD.json](IOS-BUILD.json).
+
+The initial sandbox/workspace issue was resolved by running Xcode with normal native-build permissions. The subsequent framework-signing failure was caused by Finder metadata in the cloud-synced checkout; a clean checkout outside that location built successfully. On iOS 18.6 the app stayed running and its SQLite database contained the expected `cache` and `pending` tables. Nonfatal OS/XPC and UIKit focus diagnostics were observed; no claim of a completely warning-free runtime is made. Full native customer/staff interaction and physical-camera/label tests remain separate from these startup checks.

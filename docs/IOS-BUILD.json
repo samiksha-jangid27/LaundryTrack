@@ -1,0 +1,28 @@
+{
+  "artifact": "LaundryTrack-ios-simulator-arm64.zip",
+  "date": "2026-11-21",
+  "mobileSourceCommit": "536635769c3f788967ed494da9b96a057301be22",
+  "sha256": "affbeea0afae5a6c191db6a2d2afefd4a32ba3cc73f74576b8ef64690301b67e",
+  "bytes": 14951592,
+  "applicationId": "com.samikshajangid.laundrytrack",
+  "versionName": "1.0.0",
+  "minimumIOS": "16.4",
+  "platform": "iOS Simulator",
+  "architecture": "arm64",
+  "xcode": "26.4",
+  "configuration": "Release",
+  "nativeAssembly": "PASS",
+  "simulatorInstallation": "PASS",
+  "simulatorLaunch": {
+    "iOS26_4": "Launch command returned a process ID",
+    "iOS18_6": "PASS; process remained running after startup"
+  },
+  "nativeSQLiteInitialization": {
+    "status": "PASS",
+    "tables": ["cache", "pending"]
+  },
+  "signing": "Simulator build; host app built with CODE_SIGNING_ALLOWED=NO",
+  "physicalIPhoneVerification": "NOT PERFORMED",
+  "appStoreOrTestFlightDistribution": false,
+  "apiRequired": true
+}

@@ -12,6 +12,8 @@ LaundryTrack is a JavaScript major-project pilot for one laundry outlet. Custome
 
 [Download the ARM64 Android pilot APK](https://github.com/samiksha-jangid27/LaundryTrack/releases/tag/v1.0.0-pilot). Android 7+; debug-signed for classroom demonstration. It needs the running API described below. [Build receipt and checksum](docs/ANDROID-BUILD.json).
 
+[ARM64 iOS Simulator build](https://github.com/samiksha-jangid27/LaundryTrack/releases/download/v1.0.0-pilot/LaundryTrack-ios-simulator-arm64.zip) is also available for Apple Silicon Macs. This is a simulator app, not a physical-iPhone IPA. [iOS build receipt](docs/IOS-BUILD.json).
+
 ## Run the project
 
 Use Node **22.18 or later**, and npm. Run everything below from the repository root.
