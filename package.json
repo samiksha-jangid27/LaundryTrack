@@ -1,0 +1,17 @@
+{
+  "name": "laundrytrack",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "workspaces": ["server", "web", "mobile", "packages/*"],
+  "scripts": {
+    "dev": "concurrently -n api,web -c cyan,green \"npm run dev -w server\" \"npm run dev -w web\"",
+    "start": "npm run start -w server",
+    "seed": "npm run seed -w server",
+    "test": "node --test server/test/*.test.js packages/core/test/*.test.js",
+    "build": "npm run build -w web",
+    "mobile": "npm run start -w mobile"
+  },
+  "engines": {"node": ">=22.18.0"},
+  "devDependencies": {"concurrently": "^9.2.1"}
+}
