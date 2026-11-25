@@ -12,6 +12,23 @@ jobs:
   application:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: laundrytrack
+          POSTGRES_PASSWORD: local-test-only
+          POSTGRES_DB: laundrytrack_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://laundrytrack:local-test-only@localhost:5432/laundrytrack_test
+      TEST_DATABASE_URL: postgresql://laundrytrack:local-test-only@localhost:5432/laundrytrack_test
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -19,10 +36,12 @@ jobs:
           node-version: '22.18.0'
           cache: npm
       - run: npm ci
-      - run: npm run check
+      - run: npm run db:migrate
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
       - run: npm audit --omit=dev --audit-level=high
       - name: Bundle Android and iOS
-        working-directory: mobile
-        run: npx expo export --platform android --platform ios --max-workers 2
+        run: npm run frontend:check
         env:
           CI: '1'

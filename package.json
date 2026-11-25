@@ -4,45 +4,42 @@
   "private": true,
   "type": "module",
   "workspaces": [
-    "server",
-    "web",
-    "mobile",
-    "packages/*"
+    "backend",
+    "frontend"
   ],
   "scripts": {
-    "dev": "concurrently -n api,web -c cyan,green \"npm run dev -w server\" \"npm run dev -w web\"",
-    "start": "npm run start -w server",
-    "seed": "npm run seed -w server",
-    "test": "node --test server/test/*.test.js packages/core/test/*.test.js mobile/test/*.test.mjs",
-    "build": "npm run build -w web",
-    "mobile": "npm run start -w mobile",
-    "demo": "cross-env DEMO_MODE=true npm run dev",
-    "model:evaluate": "node server/scripts/evaluate-model.js",
+    "dev": "concurrently --kill-others --handle-input --default-input-target frontend -n backend,frontend -c cyan,green \"npm run backend\" \"npm run frontend\"",
+    "backend": "npm run dev --workspace @laundrytrack/backend",
+    "frontend": "npm run start --workspace @laundrytrack/frontend",
+    "start": "npm run start --workspace @laundrytrack/backend",
+    "staff:create": "npm run staff:create --workspace @laundrytrack/backend",
+    "test": "node --test --test-concurrency=1 backend/test/*.test.js backend/shared/test/*.test.js frontend/test/*.test.mjs",
     "lint": "eslint .",
     "typecheck": "tsc --project jsconfig.json --noEmit",
     "format": "prettier --write .",
-    "check": "npm run lint && npm run typecheck && npm test && npm run build",
-    "assets": "node scripts/render-assets.mjs",
-    "mobile:export": "npm exec -w mobile -- expo export --platform all --max-workers 2",
-    "staff:create": "node server/scripts/create-staff.js"
+    "check": "npm run lint && npm run typecheck && npm test && npm run frontend:check",
+    "frontend:check": "npm exec --workspace @laundrytrack/frontend -- expo export --platform android --platform ios --max-workers 2",
+    "frontend:doctor": "npm exec --workspace @laundrytrack/frontend -- expo-doctor",
+    "db:generate": "npm run db:generate --workspace @laundrytrack/backend",
+    "db:migrate": "npm run db:migrate --workspace @laundrytrack/backend",
+    "db:studio": "npm run db:studio --workspace @laundrytrack/backend"
   },
   "engines": {
-    "node": ">=22.18.0"
+    "node": ">=22.18.0 <23"
   },
   "devDependencies": {
     "@babel/eslint-parser": "^7.28.6",
     "concurrently": "^9.2.1",
-    "cross-env": "^10.1.0",
     "eslint": "^9.39.2",
     "eslint-plugin-react-hooks": "^7.0.1",
     "globals": "^17.3.0",
     "prettier": "^3.8.1",
-    "sharp": "^0.35.5",
     "typescript": "^5.9.3"
   },
   "overrides": {
     "@expo/fingerprint": {
       "minimatch": "^11.0.9"
-    }
+    },
+    "effect": "3.22.1"
   }
 }

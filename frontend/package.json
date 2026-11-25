@@ -1,0 +1,35 @@
+{
+  "name": "@laundrytrack/frontend",
+  "version": "1.0.0",
+  "main": "expo-router/entry",
+  "dependencies": {
+    "@expo/vector-icons": "^15.0.2",
+    "@laundrytrack/shared": "file:../backend/shared",
+    "expo": "~58.0.26",
+    "expo-build-properties": "~58.0.12",
+    "expo-camera": "~58.0.14",
+    "expo-constants": "~58.0.16",
+    "expo-crypto": "~58.0.8",
+    "expo-dev-client": "~58.0.21",
+    "expo-file-system": "~58.0.14",
+    "expo-linking": "~58.0.17",
+    "expo-print": "~58.0.9",
+    "expo-router": "~58.0.32",
+    "expo-secure-store": "~58.0.3",
+    "expo-sharing": "~58.0.23",
+    "expo-sqlite": "~58.0.18",
+    "expo-status-bar": "~58.0.5",
+    "expo-system-ui": "~58.0.7",
+    "react": "19.3.0",
+    "react-native": "0.88.1",
+    "react-native-safe-area-context": "~5.11.1",
+    "react-native-screens": "~4.30.1"
+  },
+  "scripts": {
+    "start": "expo start",
+    "android": "expo run:android",
+    "ios": "expo run:ios"
+  },
+  "private": true,
+  "type": "module"
+}

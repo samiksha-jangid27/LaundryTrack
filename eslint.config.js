@@ -2,7 +2,16 @@ import parser from '@babel/eslint-parser';
 import globals from 'globals';
 import hooks from 'eslint-plugin-react-hooks';
 export default [
-  { ignores: ['**/node_modules/**', '**/dist/**', '**/android/**', '**/ios/**', '.expo/**'] },
+  {
+    ignores: [
+      '**/node_modules/**',
+      '**/dist/**',
+      '**/android/**',
+      '**/ios/**',
+      '**/.expo/**',
+      'backend/generated/**',
+    ],
+  },
   {
     files: ['**/*.{js,jsx,mjs}'],
     languageOptions: {

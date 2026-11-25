@@ -9,6 +9,6 @@
     "moduleResolution": "Bundler",
     "skipLibCheck": true
   },
-  "include": ["server/src/**/*", "web/src/**/*", "mobile/src/**/*", "packages/core/**/*"],
-  "exclude": ["node_modules", "**/dist", "mobile/android", "mobile/ios"]
+  "include": ["backend/src/**/*", "backend/shared/**/*", "frontend/src/**/*"],
+  "exclude": ["node_modules", "**/dist", "frontend/android", "frontend/ios", "backend/generated"]
 }

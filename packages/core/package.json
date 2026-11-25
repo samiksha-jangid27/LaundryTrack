@@ -1,9 +1,0 @@
-{
-  "name": "@laundrytrack/core",
-  "version": "1.0.0",
-  "type": "module",
-  "exports": "./index.js",
-  "dependencies": {
-    "zod": "^4.1.13"
-  }
-}

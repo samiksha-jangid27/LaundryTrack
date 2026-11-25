@@ -1,7 +1,10 @@
 node_modules
 **/dist
-mobile/android
-mobile/ios
+frontend/android
+frontend/ios
 data
 package-lock.json
 outputs
+
+
+backend/generated

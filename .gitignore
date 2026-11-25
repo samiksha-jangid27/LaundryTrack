@@ -2,16 +2,18 @@ node_modules/
 .env
 .env.*
 !.env.example
+!.env.*.example
 data/
 dist/
 .expo/
 coverage/
 *.log
 .DS_Store
-mobile/ios/
-mobile/android/
-test-results/
-playwright-report/
+frontend/ios/
+frontend/android/
 
-# Locally built installable apps; published binaries live in GitHub Releases.
-artifacts/
+*.apk
+*.aab
+*.ipa
+
+backend/generated/

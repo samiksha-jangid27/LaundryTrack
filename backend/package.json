@@ -1,0 +1,28 @@
+{
+  "name": "@laundrytrack/backend",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node --env-file-if-exists=.env --watch --watch-path=src src/index.js",
+    "start": "node --env-file-if-exists=.env src/index.js",
+    "staff:create": "node --env-file-if-exists=.env --env-file-if-exists=.env.staff scripts/create-staff.js",
+    "postinstall": "prisma generate",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate deploy",
+    "db:studio": "prisma studio",
+    "start:render": "prisma migrate deploy && node src/index.js"
+  },
+  "dependencies": {
+    "@laundrytrack/shared": "file:./shared",
+    "@prisma/adapter-pg": "7.10.1",
+    "@prisma/client": "7.10.1",
+    "cors": "^2.8.5",
+    "express": "^5.1.0",
+    "helmet": "^8.1.0",
+    "pg": "8.23.1",
+    "prisma": "7.10.1",
+    "qrcode": "^1.5.4",
+    "zod": "^4.1.13"
+  }
+}
