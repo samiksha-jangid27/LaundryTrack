@@ -2,12 +2,10 @@ import { useState } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { Redirect } from 'expo-router';
 import { useSession } from '../lib/session';
-import { getBaseUrl, setBaseUrl } from '../lib/api';
 import {
   Screen,
   Heading,
   Card,
-  Body,
   Button,
   Field,
   Feedback,
@@ -16,7 +14,7 @@ import {
   colors,
 } from '../components/UI';
 export default function SignIn() {
-  const { user, loading, login, checkConnection, notice, storageError } = useSession();
+  const { user, loading, login, notice, storageError } = useSession();
   const [register, setRegister] = useState(false);
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
@@ -24,9 +22,6 @@ export default function SignIn() {
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
-  const [settings, setSettings] = useState(false);
-  const [address, setAddress] = useState(getBaseUrl());
-  const [message, setMessage] = useState('');
   if (loading) return <Loading />;
   if (user) return <Redirect href="/(tabs)/home" />;
   async function submit() {
@@ -68,7 +63,7 @@ export default function SignIn() {
       </View>
       <Card>
         <Heading title={register ? 'Create your account' : 'Welcome back.'} />
-        <Feedback error={error || storageError} message={message || notice} />
+        <Feedback error={error || storageError} message={notice} />
         {register && (
           <>
             <Field
@@ -122,49 +117,6 @@ export default function SignIn() {
           </Text>
         </Pressable>
       </Card>
-      <Button
-        variant="secondary"
-        icon="settings-outline"
-        title={settings ? 'Hide connection settings' : 'API connection settings'}
-        onPress={() => {
-          setAddress(getBaseUrl());
-          setSettings(!settings);
-        }}
-      />
-      {settings && (
-        <Card style={{ marginTop: 18 }}>
-          <Body>
-            For a physical phone, use your computer’s LAN address on the same Wi-Fi. The API runs on
-            port 4000.
-          </Body>
-          <View style={{ height: 16 }} />
-          <Field
-            label="API address"
-            value={address}
-            onChangeText={setAddress}
-            autoCapitalize="none"
-            keyboardType="url"
-          />
-          <Button
-            title="Save & check connection"
-            busy={busy}
-            onPress={async () => {
-              setBusy(true);
-              setError(null);
-              setMessage('');
-              try {
-                await setBaseUrl(address);
-                await checkConnection();
-                setMessage('Connected to LaundryTrack.');
-              } catch (e) {
-                setError(e);
-              } finally {
-                setBusy(false);
-              }
-            }}
-          />
-        </Card>
-      )}
     </Screen>
   );
 }

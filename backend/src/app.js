@@ -17,7 +17,7 @@ export function createApp(db) {
   app.use(
     helmet({ contentSecurityPolicy: { directives: { 'img-src': ["'self'", 'data:', 'blob:'] } } }),
   );
-  const origins = (process.env.WEB_ORIGINS || 'http://localhost:8081,http://127.0.0.1:8081')
+  const origins = (process.env.WEB_ORIGINS || '')
     .split(',')
     .map((origin) => origin.trim())
     .filter(Boolean);

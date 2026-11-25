@@ -14,6 +14,8 @@ test('production config requires a hosted HTTPS origin and disables insecure tra
   });
   const config = JSON.parse(readFileSync(new URL('../app.json', import.meta.url))).expo;
   process.env.APP_VARIANT = 'production';
+  delete process.env.EXPO_PUBLIC_API_URL;
+  assert.equal(appConfig({ config }).extra.apiUrl, 'https://laundrytrack-1.onrender.com');
   for (const address of [
     '',
     'http://example.com',
@@ -25,6 +27,7 @@ test('production config requires a hosted HTTPS origin and disables insecure tra
   }
   process.env.EXPO_PUBLIC_API_URL = 'https://api.example.com';
   const production = appConfig({ config });
+  assert.equal(production.extra.apiUrl, 'https://api.example.com');
   assert.deepEqual(production.platforms, ['android', 'ios']);
   assert.equal(production.extra.apiRequiresHttps, true);
   assert.equal(production.ios.infoPlist.NSAppTransportSecurity.NSAllowsArbitraryLoads, undefined);

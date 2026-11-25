@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react';
-import { api, secret, setToken, restoreBaseUrl, onUnauthorized } from './api';
+import { api, secret, setToken, onUnauthorized } from './api';
 import { clearLocal, listPending } from './storage';
 import { readSavedSession } from './session-state';
 const Context = createContext(null);
@@ -20,12 +20,6 @@ export function SessionProvider({ children }) {
     });
     async function restore() {
       try {
-        try {
-          await restoreBaseUrl();
-        } catch {
-          await secret.remove('laundrytrack.api');
-          setNotice('The saved API address could not be restored. Check connection settings.');
-        }
         const value = await secret.get('laundrytrack.session');
         if (value) {
           const saved = readSavedSession(value);
@@ -97,16 +91,8 @@ export function SessionProvider({ children }) {
     setUser(null);
     setNotice('');
   }
-  async function checkConnection() {
-    const result = await api('/health');
-    if (result.status !== 'ok' || typeof result.version !== 'string')
-      throw new Error('This address is not a LaundryTrack API.');
-    return result;
-  }
   return (
-    <Context.Provider
-      value={{ user, loading, login, logout, checkConnection, notice, storageError }}
-    >
+    <Context.Provider value={{ user, loading, login, logout, notice, storageError }}>
       {children}
     </Context.Provider>
   );

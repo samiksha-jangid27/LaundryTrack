@@ -3,7 +3,6 @@ import { useState, useCallback } from 'react';
 import { View, Text, Alert } from 'react-native';
 import { canOperate, STAGE_LABELS } from '@laundrytrack/shared';
 import { useSession } from '../../lib/session';
-import { getBaseUrl } from '../../lib/api';
 import { pendingScans, syncPending } from '../../lib/queue';
 import { clearPending } from '../../lib/storage';
 import { shareOrderExport } from '../../lib/export';
@@ -175,16 +174,6 @@ export default function Account() {
           />
         </Card>
       )}
-      <Card>
-        <SectionTitle>API connection</SectionTitle>
-        <Text selectable style={{ fontSize: 13, color: colors.green, lineHeight: 22 }}>
-          {getBaseUrl()}
-        </Text>
-        <Body style={{ marginTop: 13 }}>
-          To connect to another outlet server, sign out and use connection settings on the sign-in
-          screen.
-        </Body>
-      </Card>
       <Card style={{ backgroundColor: '#edf3e4' }}>
         <SectionTitle>Care, with a clear trail.</SectionTitle>
         <Body>

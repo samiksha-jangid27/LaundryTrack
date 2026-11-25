@@ -50,58 +50,48 @@ The backend is the authority for prices, permissions and custody changes. The fr
 
 Prisma transactions commit an order change, its history and its retry receipt together. Each update includes an order version and a unique action ID, preventing duplicate work after a lost response and rejecting stale changes. QR labels contain opaque garment IDs rather than customer details. Attach labels securely using material appropriate for washing.
 
-## Run locally
+## Run the mobile app
 
-Use **Node 22.18 or later within Node 22**, npm, and a PostgreSQL database. `.nvmrc` specifies the tested Node version.
+Use **Node 22.18 or later within Node 22** and npm. `.nvmrc` specifies the tested Node version.
 
-1. Install from the repository root:
+The app uses the deployed backend at **https://laundrytrack-1.onrender.com** by default. You do not need to run a backend on your computer to use it.
 
-   ```sh
-   npm ci
-   cp backend/.env.example backend/.env
-   ```
+From the repository root:
 
-2. Create a PostgreSQL database named `laundrytrack` using your preferred PostgreSQL installation/provider. Set its connection string in `backend/.env`:
+```sh
+npm ci
+npm run frontend
+```
+
+Use an Expo SDK 58 development client. For a matching Expo Go client, use `npm exec --workspace @laundrytrack/frontend -- expo start --go`. In the Expo terminal, `a` opens Android and `i` opens an iOS Simulator when the corresponding tooling is installed.
+
+`frontend/.env.example` contains the deployed address. `EXPO_PUBLIC_API_URL` in `frontend/.env` can override it for another environment; use only the server origin, without `/api`. Restart Expo and fully reload the app after changing it. There is no saved in-app API override, so an old local address cannot replace the configured backend. Cloud builds also use the hosted default when no environment override is supplied.
+
+Check the deployed API at [the health endpoint](https://laundrytrack-1.onrender.com/api/health). Create a customer account in the app; there are no preconfigured application accounts. Database credentials belong only in the backend environment.
+
+## Develop the backend locally (optional)
+
+1. Copy `backend/.env.example` to `backend/.env` if it does not already exist.
+2. In Prisma Console, select the database, choose **Connect to your database**, generate a connection string and copy the **Direct TCP** URL into `DATABASE_URL`:
 
    ```dotenv
-   DATABASE_URL=postgresql://USER:PASSWORD@HOST:5432/laundrytrack
+   DATABASE_URL="postgres://USER:PASSWORD@db.prisma.io:5432/postgres?sslmode=require"
    PORT=4000
    TRUST_PROXY_HOPS=0
    ```
 
-   Prisma Client is generated during installation. Database credentials belong only in the backend environment file, which Git ignores.
+   Copy the complete generated URL with its actual credentials. The current backend uses this direct connection for Prisma CLI commands and its single runtime connection pool (maximum five connections). [Prisma connection strings](https://www.prisma.io/docs/postgres/database/connecting-to-your-database#get-your-connection-strings).
 
-3. Apply the committed migrations:
+3. From the repository root, run:
 
    ```sh
    npm run db:migrate
-   ```
-
-4. Start the backend in one terminal:
-
-   ```sh
    npm run backend
    ```
 
-5. In another terminal, from the same repository root, start the mobile frontend:
+Prisma Client is generated during installation. The migration command applies committed migrations. Starting the backend inserts missing service catalog records; customers and orders are created through the app. Keep `.env` private.
 
-   ```sh
-   npm run frontend
-   ```
-
-   Use an Expo SDK 58 development client. For a matching Expo Go client, start with `npm exec --workspace @laundrytrack/frontend -- expo start --go` instead. In the Expo terminal, `a` opens Android and `i` opens an iOS Simulator when the corresponding tooling is installed.
-
-The backend starts with an empty customer/order database and the service catalog. Create a customer account in the app. There are no preconfigured application accounts.
-
-On a physical phone, connect it to the same Wi-Fi as the computer. If automatic address detection cannot reach the API, use **API connection settings** on the sign-in screen:
-
-| Device           | API address                         |
-| ---------------- | ----------------------------------- |
-| Android emulator | `http://10.0.2.2:4000`              |
-| iOS Simulator    | `http://localhost:4000`             |
-| Physical phone   | `http://YOUR_COMPUTER_WIFI_IP:4000` |
-
-You can also set `EXPO_PUBLIC_API_URL` in `frontend/.env`. Use only the server origin, without `/api`, and restart Metro after changing it. A saved connection-setting override takes precedence over this environment value.
+To deliberately test that local backend from a physical phone, set `EXPO_PUBLIC_API_URL=http://YOUR_COMPUTER_WIFI_IP:4000` in `frontend/.env` and keep the phone and computer on the same Wi-Fi. Restore the hosted address afterwards. Production builds accept only HTTPS API addresses.
 
 ## Create the owner and staff accounts
 
@@ -166,17 +156,17 @@ Integration tests use a **separate disposable PostgreSQL database** whose name e
 
 `check` runs lint, JavaScript syntax/module checking, tests against PostgreSQL, and Android/iOS bundle exports. It does not create an APK. The JavaScript check uses `checkJs: false` and is not full static type checking. Test fixtures reset only the explicitly configured test database. GitHub Actions provisions its own test database.
 
-## Host the backend on Render
+## Host the backend on Render with Prisma Postgres
 
-1. Push the repository to GitHub. In Render, create **New → Postgres**. Choose the same account and region you will use for the backend and copy the database's **Internal Database URL**. Render recommends internal connections between services in the same region. [PostgreSQL setup and connections](https://render.com/docs/postgresql-creating-connecting).
+The current backend is **https://laundrytrack-1.onrender.com**. PostgreSQL is hosted in **Prisma Console**; Render runs the Express API. The API address and database connection string are separate values.
 
-   Free Render Postgres databases expire after 30 days. Choose a paid database for data that must remain available beyond that period. Free web services also sleep after 15 minutes without traffic, so the first mobile request can take longer or need a retry. [Render free-instance limits](https://render.com/docs/free).
-
-2. Create **New → Web Service**, connect the GitHub repository, and use:
+1. In Prisma Console, open the database and generate a **Direct TCP** connection string. Use the complete generated PostgreSQL URL, including `sslmode=require`, as the backend's private `DATABASE_URL`. The same hosted database URL works from your computer and Render. [Prisma database connections](https://www.prisma.io/docs/postgres/database/connecting-to-your-database).
+2. Commit and push the current repository to GitHub. In Render, connect it as a Node **Web Service** with these settings:
 
    | Setting           | Value                                                    |
    | ----------------- | -------------------------------------------------------- |
    | Runtime           | Node                                                     |
+   | Branch            | `main`                                                   |
    | Root directory    | Leave blank: use the repository root                     |
    | Build command     | `npm ci --omit=dev --workspace @laundrytrack/backend`    |
    | Start command     | `npm run start:render --workspace @laundrytrack/backend` |
@@ -184,33 +174,32 @@ Integration tests use a **separate disposable PostgreSQL database** whose name e
 
    Keep the repository root because the project uses a root lockfile and local shared package. The build installs backend dependencies and generates Prisma Client. The start command applies committed migrations before starting Express. [Render Node setup](https://render.com/docs/deploy-node-express-app), [monorepo roots](https://render.com/docs/monorepo-support).
 
-3. Add these environment variables to the web service:
+3. Set these variables under **Render → Environment**. Paste the actual database URL without surrounding quotes in the Render value field:
 
    ```dotenv
    NODE_VERSION=22.18.0
    NODE_ENV=production
-   DATABASE_URL=PASTE_THE_RENDER_INTERNAL_DATABASE_URL
+   DATABASE_URL=YOUR_PRISMA_DIRECT_TCP_CONNECTION_URL
    TRUST_PROXY_HOPS=1
    ```
 
-   Render supplies `PORT`; the API listens on it and binds to `0.0.0.0`. Pinning `NODE_VERSION` keeps Render aligned with the tested runtime. The proxy setting follows Render's Express guidance. [Node version configuration](https://render.com/docs/node-version), [Express proxy configuration](https://render.com/articles/how-to-implement-authentication-and-authorization).
+   Render supplies `PORT`; the API listens on it and binds to `0.0.0.0`. [Node version configuration](https://render.com/docs/node-version), [Express proxy configuration](https://render.com/articles/how-to-implement-authentication-and-authorization).
 
-4. Deploy and open `https://YOUR_SERVICE.onrender.com/api/health`. Expect:
+4. Deploy the latest commit, then open `https://laundrytrack-1.onrender.com/api/health`. Expect:
 
    ```json
    { "status": "ok", "version": "1.0.0" }
    ```
 
-   Check `/api/services`, register a customer and confirm that booking records appear in PostgreSQL. The API needs no persistent filesystem disk because records are stored in managed PostgreSQL.
+   Check `/api/services`, register a customer and confirm booking records in Prisma Studio. The API needs no persistent filesystem disk because records are stored in Prisma Postgres.
 
-5. Provision the owner using the administrative command above. When running it from your computer, use Render's **External Database URL** as the backend connection string; deployed Render services use the internal URL.
+5. Provision the owner with `npm run staff:create` as described above, using the same Prisma database URL in `backend/.env`.
+6. The mobile app already defaults to this hosted backend. To use a different deployment, set its HTTPS origin as `EXPO_PUBLIC_API_URL` in the frontend environment, then restart Expo and fully reload the app.
 
-6. Put `EXPO_PUBLIC_API_URL=https://YOUR_SERVICE.onrender.com` in `frontend/.env`, restart Metro, and update any previously saved API connection override in the app. Keep PostgreSQL credentials out of the frontend.
-
-Use database backups appropriate to the Render plan and one API instance initially; authentication throttling currently lives in process memory. Hosting and database creation are manual steps for your account.
+Use database backups appropriate to your Prisma plan and one API instance initially; authentication throttling lives in process memory. Free Render web services sleep after 15 minutes without traffic, so the first request can take longer or need a retry. [Render free-service limits](https://render.com/docs/free#spinning-down-on-idle).
 
 ## APK after hosting
 
 First verify registration, one-item pricing, pickup/intake, scanning, partial/full delivery, issues and offline recovery against the hosted backend on a real phone. Camera decoding, label printing/attachment and OS file sharing need device checks.
 
-Production builds require an HTTPS `EXPO_PUBLIC_API_URL`. The later APK build will use that hosted address; APK generation and store submission are separate from the checks above.
+Production builds use the hosted HTTPS address by default and require HTTPS for any `EXPO_PUBLIC_API_URL` override. The later APK build will use the configured hosted address; APK generation and store submission are separate from the checks above.

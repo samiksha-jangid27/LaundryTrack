@@ -1,7 +1,7 @@
 export default ({ config }) => {
   const production = process.env.APP_VARIANT === 'production';
+  const apiUrl = process.env.EXPO_PUBLIC_API_URL ?? 'https://laundrytrack-1.onrender.com';
   if (production) {
-    const apiUrl = process.env.EXPO_PUBLIC_API_URL;
     if (
       !apiUrl ||
       !/^https:\/\/[^/?#]+\/?$/.test(apiUrl) ||
@@ -9,13 +9,13 @@ export default ({ config }) => {
       new URL(apiUrl).password
     )
       throw new Error(
-        'Production builds require EXPO_PUBLIC_API_URL set to an HTTPS server address without /api.',
+        'Production builds require EXPO_PUBLIC_API_URL to be an HTTPS server address without /api.',
       );
   }
   return {
     ...config,
     platforms: ['android', 'ios'],
-    extra: { ...config.extra, apiRequiresHttps: production },
+    extra: { ...config.extra, apiUrl, apiRequiresHttps: production },
     ios: {
       ...config.ios,
       infoPlist: {
