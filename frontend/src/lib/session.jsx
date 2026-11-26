@@ -2,7 +2,6 @@ import { createContext, useContext, useState, useEffect, useCallback } from 'rea
 import { api, secret, setToken, onUnauthorized } from './api';
 import { clearLocal, listPending } from './storage';
 import { readSavedSession } from './session-state';
-import { unregisterPushDevice } from './push';
 const Context = createContext(null);
 export function SessionProvider({ children }) {
   const [user, setUser] = useState(null);
@@ -100,7 +99,6 @@ export function SessionProvider({ children }) {
   async function logout() {
     if (user && listPending(user.id).length)
       throw new Error('Sync or discard the saved scans before signing out.');
-    await unregisterPushDevice().catch(() => {});
     try {
       await api('/auth/logout', { method: 'POST' });
     } catch (e) {

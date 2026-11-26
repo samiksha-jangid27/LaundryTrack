@@ -41,7 +41,6 @@ export default ({ config }) => {
     plugins: [
       ...config.plugins.filter((p) => (Array.isArray(p) ? p[0] : p) !== 'expo-build-properties'),
       'expo-sharing',
-      ['expo-notifications', { color: '#007F75', defaultChannel: 'updates' }],
       [
         'expo-splash-screen',
         { backgroundColor: '#007F75', image: './assets/splash-icon.png', imageWidth: 180 },

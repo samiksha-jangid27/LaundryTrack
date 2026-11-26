@@ -19,7 +19,6 @@ import {
   s,
 } from '../../components/UI';
 import OrderCard from '../../components/OrderCard';
-import NotificationBell from '../../components/NotificationBell';
 const serviceIcons = {
   'wash-fold': 'water-outline',
   'wash-iron': 'shirt-outline',
@@ -53,7 +52,6 @@ export default function Home() {
       <View style={s.row}>
         <Brand small />
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-          <NotificationBell />
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Open account"

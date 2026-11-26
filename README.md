@@ -14,7 +14,6 @@ Customers can book doorstep pickup for individual garments, see the complete pri
 - **Verified returns:** only the customer receives the six-digit handoff code. Partial returns leave the remaining garments open.
 - **Support and outlet tools:** order incidents, threaded customer/staff queries, owner assignments, account management, activity history, outlet workload and owner-only CSV reports.
 - **Offline packing support:** the phone saves pending scans and replays them when connected. Conflicting updates remain pending for review.
-- **Notifications for every role:** a personal inbox, unread badge, order/query links and optional phone push alerts for customer, staff and owner events.
 
 Customers, staff and owners use the same mobile app. Public registration creates customer accounts with email/password sign-in; the first owner is provisioned through an administrative command. Customers may request staff access, which only an owner can approve. Payments are settled directly with the outlet. Delivery tracking uses status updates.
 
@@ -52,34 +51,9 @@ Existing accounts and passwords continue to work. Historical verification databa
 
 Create the initial owner with the administrative command below, then use the same mobile sign-in screen. There is no default admin password. The owner gets Dashboard, Requests, Manage, Support and Account tabs; staff get assigned work, personal pickup, support and account tools. Staff provisioning by CLI remains available for explicitly trusted accounts.
 
-## Notifications and phone alerts
+## Notifications
 
-Open the bell on Home or **Account → Notifications & phone alerts**. All roles get a persisted inbox with All/Unread filters, pagination, read status and links to the relevant screen. The unread badge and inbox refresh while the app is active; pull to refresh is also available. Phone alerts are optional; pausing them keeps the in-app inbox working.
-
-| Event                                                                                                                 | Recipients                                                                                       |
-| --------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| Booking confirmation                                                                                                  | Booking customer and active owners                                                               |
-| Assignment, pickup, cleaning, quality, packing, dispatch, partial/full return, cancellation, garment issue/resolution | Booking customer, assigned team member and active owners, excluding the person making the update |
-| Order/query assignment removed                                                                                        | Previous assignee receives a generic work-queue update                                           |
-| New customer/staff query                                                                                              | Active owners                                                                                    |
-| Query assignment, reply, status or resolution                                                                         | Requester, eligible assignee and active owners, excluding the author                             |
-| New customer registration or staff access request                                                                     | Active owners                                                                                    |
-| Staff approval/decline or account change                                                                              | Affected account; cleared active assignments also alert owners                                   |
-
-Private staff queries notify only that requester and owners, including after a role change. Individual garment intake/scans do not produce phone-alert spam. Push messages use a generic preview and an opaque notification ID: no OTP, delivery code, address or conversation text appears on the lock screen. Opening a push fetches the notification under the current authenticated account; order/query permissions are still checked. A suspended account cannot sign in or receive phone pushes; its account notice stays in the inbox for later access if re-enabled.
-
-**Enable real phone push delivery:**
-
-1. From `frontend`, run `npx eas-cli@latest login` and `npx eas-cli@latest init` to connect your Expo project. Copy its project UUID into `EXPO_PUBLIC_EAS_PROJECT_ID` in `frontend/.env` and your EAS build environment. This app reads that value in `app.config.js`; no project ID is hardcoded.
-2. For Android, create a Firebase project and register the app package **`com.samikshajangid.laundrytrack`**. Download its `google-services.json`. Set `GOOGLE_SERVICES_JSON` to the file path locally, and create an EAS **file** environment variable of the same name for cloud builds. The app config uses it as `android.googleServicesFile`.
-3. In the Firebase project, obtain a service-account key for **FCM v1**. Run `npx eas-cli@latest credentials`, choose Android and the build profile, then **Google Service Account → Manage your Google Service Account Key for Push Notifications (FCM V1) → Set up → Upload a new service account key**. Keep this private key outside the repository. It is separate from the app's `google-services.json`. [Expo FCM credentials](https://docs.expo.dev/push-notifications/fcm-credentials/).
-4. For iOS, configure APNs credentials for the same Expo project using EAS credentials and your Apple developer account. Install a native build after adding the notifications plugin and credentials. **Remote push needs the installed app; this app keeps Expo Go on the in-app inbox path.** [Expo push setup](https://docs.expo.dev/push-notifications/push-notifications-setup/), [SDK 58 notifications](https://docs.expo.dev/versions/v58.0.0/sdk/notifications/).
-5. In Expo project settings, enhanced push security is recommended. If enabled, set the matching private Expo token as **`EXPO_ACCESS_TOKEN` in Render**, then redeploy. Never put it in `EXPO_PUBLIC_*` variables. [Expo push delivery and security](https://docs.expo.dev/push-notifications/sending-notifications/).
-6. After installing the build, sign in and choose **Enable alerts on this phone** in Notifications. Accept the OS permission. Test with your own customer, staff and owner accounts: book/assign an order, update a stage, raise/reply to a query and review a staff request. Check foreground, background, closed-app taps, paused alerts and switching accounts on a shared phone before release.
-
-Notifications and push-outbox rows commit in the same PostgreSQL transaction as the action. Replaying an action does not create another inbox entry. The API's worker polls the durable outbox every ten seconds, leases a bounded batch, retries transient failures with backoff and checks Expo receipts after fifteen minutes. Invalid devices are disabled; read alerts, inactive accounts and paused preferences are skipped. Retry attempts are bounded and alerts expire after 24 hours. Reopening the app syncs an already-authorized device; sign-out removes that installation's registration when online, and switching accounts removes the previous account's queued deliveries for that installation.
-
-Push delivery is best effort: a network failure after Expo accepted a send can produce a duplicate phone alert, and an accepted receipt does not prove the user saw it. The database inbox remains the record of the update. Render's free API can sleep, delaying the worker; use an always-running service for prompt alerts. Provider credentials and actual phone delivery must be verified before calling push production-ready.
+Notification screens and the push-delivery worker are disabled in the current simplified app. Order timelines, support conversations and account activity still record workflow changes. Historical notification data is retained in PostgreSQL.
 
 ## Structure and architecture
 
@@ -105,9 +79,6 @@ flowchart LR
   App[Expo mobile app] -->|HTTPS /api| API[Express backend]
   API --> Prisma[Prisma ORM]
   Prisma --> DB[(PostgreSQL)]
-  API -->|Inbox and push outbox| DB
-  API -->|Push worker| ExpoPush[Expo push service]
-  ExpoPush -->|FCM / APNs| App
   App <--> Cache[(Phone SQLite cache)]
   Shared[Shared validation and workflow] -.-> App
   Shared -.-> API
@@ -278,7 +249,7 @@ Use database backups appropriate to your Prisma plan and one API instance initia
 
 ## Android APK
 
-The app uses the hosted backend by default. Email/password signup/login, orders, support, owner/staff account management and the notification inbox work without Google, SMS or email-service credentials. Remote phone push is optional and requires the Expo/Firebase configuration described above; it is separate from the in-app inbox.
+The app uses the hosted backend by default. Email/password signup/login, orders, support, owner/staff account management work without Google, SMS or email-service credentials. Notifications are disabled in this simplified build.
 
 Native release builds should use `APP_VARIANT=production`, the existing release signing key, and an increased Android version code. The installed APK needs internet access to reach the hosted backend. Build and verify the APK before attaching it to a new GitHub release. Test camera decoding and physical QR label attachment on the phone used by the outlet.
 

@@ -5,7 +5,6 @@ import { useEffect } from 'react';
 import * as SplashScreen from 'expo-splash-screen';
 import { isRunningInExpoGo } from 'expo';
 import { SessionProvider, useSession } from '../lib/session';
-import { NotificationProvider } from '../lib/notifications';
 import LaunchScreen from '../components/LaunchScreen';
 import { colors } from '../components/UI';
 SplashScreen.preventAutoHideAsync().catch(() => {});
@@ -37,7 +36,6 @@ function AppContent() {
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="order/[id]" options={{ title: 'Order details' }} />
         <Stack.Screen name="support/[id]" options={{ title: 'Query conversation' }} />
-        <Stack.Screen name="notifications" options={{ title: 'Notifications' }} />
         <Stack.Screen
           name="scan/[id]"
           options={{ title: 'Verify a garment', presentation: 'modal' }}
@@ -50,9 +48,7 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <SessionProvider>
-        <NotificationProvider>
-          <AppContent />
-        </NotificationProvider>
+        <AppContent />
       </SessionProvider>
     </SafeAreaProvider>
   );

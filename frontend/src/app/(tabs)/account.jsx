@@ -77,13 +77,6 @@ export default function Account() {
         subtitle="Your profile, sign-in methods and saved work."
       />
       <Feedback error={error} message={message} />
-      <Button
-        title="Notifications & phone alerts"
-        variant="secondary"
-        icon="notifications-outline"
-        onPress={() => router.push('/notifications')}
-        style={{ marginBottom: 16 }}
-      />
       <Card>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 15, marginBottom: 21 }}>
           <View
