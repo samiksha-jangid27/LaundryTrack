@@ -9,7 +9,7 @@ import { orderRouter } from './order-routes.js';
 import { reportsRouter } from './reports.js';
 import { getCatalog } from './catalog.js';
 import { errorHandler } from './errors.js';
-export function createApp(db, identityServices) {
+export function createApp(db) {
   const app = express();
   app.disable('x-powered-by');
   // Set only to the hop count of a trusted reverse proxy when hosting the API.
@@ -36,7 +36,7 @@ export function createApp(db, identityServices) {
     res.json({ status: 'ok', version: '1.0.0' });
   });
   app.get('/api/services', async (req, res) => res.json({ services: await getCatalog(db) }));
-  app.use('/api/auth', authRouter(db, identityServices));
+  app.use('/api/auth', authRouter(db));
   app.use('/api/orders', authenticate(db), orderRouter(db));
   app.use('/api/outlet', authenticate(db), operator, reportsRouter(db));
   app.use('/api/management', authenticate(db), owner, managementRouter(db));

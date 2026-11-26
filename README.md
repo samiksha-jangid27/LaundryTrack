@@ -16,27 +16,15 @@ Customers can book doorstep pickup for individual garments, see the complete pri
 - **Offline packing support:** the phone saves pending scans and replays them when connected. Conflicting updates remain pending for review.
 - **Notifications for every role:** a personal inbox, unread badge, order/query links and optional phone push alerts for customer, staff and owner events.
 
-Customers, staff and owners use the same mobile app. Public registration creates pending customer accounts that must verify their email; the first owner is provisioned through an administrative command. Verified customers may request staff access, which only an owner can approve. Payments are settled directly with the outlet. Delivery tracking uses status updates.
+Customers, staff and owners use the same mobile app. Public registration creates customer accounts with email/password sign-in; the first owner is provisioned through an administrative command. Customers may request staff access, which only an owner can approve. Payments are settled directly with the outlet. Delivery tracking uses status updates.
 
-## Account verification and Google sign-in
+## Sign up and sign in
 
-Customer accounts receive an API session only after email ownership is verified. Email codes expire after ten minutes, allow five guesses and have a one-minute resend cooldown. Codes are hashed in PostgreSQL and are never returned by the API or logged. Existing customer accounts must verify on their next sign-in; previously issued unverified customer sessions stop working. Owner/staff accounts are explicitly trusted through administrative provisioning, never public signup.
+Customers register with their name, email, mobile contact number and a password of at least ten characters. Registration signs them in immediately. Later sign-ins use email and password. No email, SMS or Google provider account is required for authentication.
 
-**Email OTP setup (required for email signup):**
+The email format is validated, but inbox ownership is not verified. Passwords are scrypt-hashed; the API issues expiring opaque bearer sessions and the mobile app saves them in SecureStore. Customers cannot choose a staff/owner role at signup. The owner reviews staff-access requests, suspends accounts and revokes sessions. Mobile numbers are contact details, not an OTP login method.
 
-1. Create a Resend account and add a sender domain you own. Add the DNS records Resend supplies and wait until the domain is verified. [Resend domain setup](https://resend.com/docs/add-a-domain).
-2. Create an email-sending API key. In Render's backend environment, add `RESEND_API_KEY` and `EMAIL_FROM` (for example `LaundryTrack <signin@YOUR_VERIFIED_DOMAIN>`). For local backend development, add the same variables to `backend/.env`; quote `EMAIL_FROM` if it contains spaces.
-3. Redeploy the backend. Request a code using an inbox you control, check inbox/spam, and complete verification. Missing credentials or delivery failure returns an error and does not grant a session. A syntactically valid email address alone is insufficient.
-
-**Google sign-in setup:**
-
-1. In Google Cloud Console, configure the OAuth consent screen and create a **Web application** OAuth client. Set that client ID as `GOOGLE_WEB_CLIENT_ID` in Render and `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` in the frontend environment. The backend checks Google's signature, audience, issuer and expiry before accepting the identity. [Google token verification](https://developers.google.com/identity/gsi/web/guides/verify-google-id-token).
-2. Create an **Android** OAuth client for `com.samikshajangid.laundrytrack`, registering the SHA-1 signing certificate of each build you use (development and final APK can have different certificates). [Google client configuration](https://react-native-google-signin.github.io/docs/setting-up/get-config-file).
-3. For iOS, create an iOS OAuth client for the same bundle identifier. Set `EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID` and its reversed client ID as `GOOGLE_IOS_URL_SCHEME`. The config adds the iOS URL scheme when supplied. Android without Firebase uses native autolinking and does not need that iOS plugin configuration. [Expo Google setup](https://react-native-google-signin.github.io/docs/setting-up/expo).
-4. Provide frontend values to the EAS build environment too, then create a new native development/release build. **Google sign-in cannot run inside Expo Go**; email verification remains available there. [Expo Google authentication](https://docs.expo.dev/guides/google-authentication/).
-5. An existing verified email/password account must first sign in normally, then choose **Account → Connect Google** with the same Google email. New Google identities are always customers and cannot grant themselves staff/owner roles. Google identities with a third-party email (neither Gmail nor a verified Workspace domain) also complete an inbox code before receiving a session. Linking never promotes a role.
-
-Production email delivery and Google OAuth require your provider configuration. Automated tests inject isolated providers; there is no production bypass, fixed OTP, test login button or fallback account. Google-only accounts supply a phone number when booking, because Google does not provide it.
+Existing accounts and passwords continue to work. Historical verification database fields remain for compatibility; they do not block email/password login. Google sign-in and authentication OTP routes have been removed.
 
 ## Customer, staff and owner workflow
 
@@ -58,7 +46,7 @@ Production email delivery and Google OAuth require your provider configuration. 
 
 **Staff query:** staff raises a query from Support → visible only to that requester and owners → owner replies/resolves. Other staff cannot read it, even if they know its ID. The requester role is saved on creation, so a later role change cannot expose an originally private staff query. Customer-query assignment never exposes staff-private conversations.
 
-**Staff access:** verified customer requests access from Account → owner reviews Manage → Staff requests → approve or decline. The decision appears when the person refreshes/reopens Account. Approval changes the primary role and invalidates old sessions; the person signs in again as staff. A staff member still has personal booking features. Public signup, profile updates and Google sign-in cannot grant elevated roles.
+**Staff access:** customer requests access from Account → owner reviews Manage → Staff requests → approve or decline. The decision appears when the person refreshes/reopens Account. Approval changes the primary role and invalidates old sessions; the person signs in again as staff. A staff member still has personal booking features. Public signup and profile updates cannot grant elevated roles.
 
 **Account handling:** the owner can suspend/enable customers or staff and change customer/staff roles. Suspension/demotion ends existing sessions and unassigns active orders and queries for owner reassignment, preserving history. Account updates use versions to reject stale changes. Owner accounts cannot be altered or promoted through these screens. Profile, staff requests and owner decisions appear in the owner-only Activity view. Former staff with saved offline scans can discard them before signing out; those scans cannot bypass current server permissions.
 
@@ -75,7 +63,7 @@ Open the bell on Home or **Account → Notifications & phone alerts**. All roles
 | Order/query assignment removed                                                                                        | Previous assignee receives a generic work-queue update                                           |
 | New customer/staff query                                                                                              | Active owners                                                                                    |
 | Query assignment, reply, status or resolution                                                                         | Requester, eligible assignee and active owners, excluding the author                             |
-| Verified new customer or staff access request                                                                         | Active owners                                                                                    |
+| New customer registration or staff access request                                                                     | Active owners                                                                                    |
 | Staff approval/decline or account change                                                                              | Affected account; cleared active assignments also alert owners                                   |
 
 Private staff queries notify only that requester and owners, including after a role change. Individual garment intake/scans do not produce phone-alert spam. Push messages use a generic preview and an opaque notification ID: no OTP, delivery code, address or conversation text appears on the lock screen. Opening a push fetches the notification under the current authenticated account; order/query permissions are still checked. A suspended account cannot sign in or receive phone pushes; its account notice stays in the inbox for later access if re-enabled.
@@ -117,9 +105,6 @@ flowchart LR
   App[Expo mobile app] -->|HTTPS /api| API[Express backend]
   API --> Prisma[Prisma ORM]
   Prisma --> DB[(PostgreSQL)]
-  API -->|Verification email| Mail[Resend]
-  App -->|Native Google sign-in| Google[Google]
-  Google -->|ID token verified by API| API
   API -->|Inbox and push outbox| DB
   API -->|Push worker| ExpoPush[Expo push service]
   ExpoPush -->|FCM / APNs| App
@@ -207,9 +192,7 @@ All routes are under `/api`. Protected requests use `Authorization: Bearer <toke
 | ----------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
 | `GET /health`                                                                                         | API and database health                                       |
 | `GET /services`                                                                                       | Active services, integer-paise prices and care durations      |
-| `POST /auth/register`, `POST /auth/login`                                                             | Email/password sign-in; unverified users receive a challenge  |
-| `POST /auth/verify-email`, `POST /auth/resend-code`                                                   | Verify a code or request another                              |
-| `POST /auth/google`, `POST /auth/google/link`                                                         | Verified Google sign-in and authenticated account linking     |
+| `POST /auth/register`, `POST /auth/login`                                                             | Customer signup and email/password sign-in                    |
 | `PATCH /auth/profile`, `POST /auth/staff-request`                                                     | Edit personal details and request owner-approved staff access |
 | `GET /support`, `POST /support`, `GET /support/:id`                                                   | Role-scoped customer/staff queries                            |
 | `POST /support/:id/messages`, `PATCH /support/:id`                                                    | Idempotent replies, assignments and status history            |
@@ -249,7 +232,7 @@ Integration tests use a **separate disposable PostgreSQL database** whose name e
 
 `check` runs lint, JavaScript syntax/module checking, tests against PostgreSQL, and Android/iOS bundle exports. It does not create an APK. The JavaScript check uses `checkJs: false` and is not full static type checking. Test fixtures reset only the explicitly configured test database. GitHub Actions provisions its own test database.
 
-Notification tests cover recipient permissions, private staff queries, duplicate retries, transaction rollback, pagination/read state, account switching, outbox leases, transport retries, push receipts and disabled devices. Provider transports are injected in tests, so the tests do not send real mail or push messages.
+Notification tests cover recipient permissions, private staff queries, duplicate retries, transaction rollback, pagination/read state, account switching, outbox leases, transport retries, push receipts and disabled devices. Push transports are injected in tests, so tests do not send notifications to real phones.
 
 ## Host the backend on Render with Prisma Postgres
 
@@ -293,10 +276,17 @@ The current backend is **https://laundrytrack-1.onrender.com**. PostgreSQL is ho
 
 Use database backups appropriate to your Prisma plan and one API instance initially; authentication throttling lives in process memory. Free Render web services sleep after 15 minutes without traffic, so the first request can take longer or need a retry. [Render free-service limits](https://render.com/docs/free#spinning-down-on-idle).
 
-## APK after hosting
+## Android APK
 
-First configure email delivery, Google OAuth and push credentials, deploy the backend migrations, and verify email signup/code expiry, Google sign-in, account linking and actual phone alerts. Then verify one-item pricing, pickup/intake, scanning, partial/full delivery, customer/staff queries, owner account decisions and offline recovery against the hosted backend on a real phone. Camera decoding, label printing/attachment and OS file sharing need device checks. Create a release and APK only after those checks.
+The app uses the hosted backend by default. Email/password signup/login, orders, support, owner/staff account management and the notification inbox work without Google, SMS or email-service credentials. Remote phone push is optional and requires the Expo/Firebase configuration described above; it is separate from the in-app inbox.
 
-Production builds use the hosted HTTPS address by default and require HTTPS for any `EXPO_PUBLIC_API_URL` override. The later APK build will use the configured hosted address; APK generation and store submission are separate from the checks above.
+Native release builds should use `APP_VARIANT=production`, the existing release signing key, and an increased Android version code. The installed APK needs internet access to reach the hosted backend. Build and verify the APK before attaching it to a new GitHub release. Test camera decoding and physical QR label attachment on the phone used by the outlet.
 
-The native splash uses the configured app mark and teal background; a branded loading screen also covers session restoration. Expo Go does not reproduce the final native splash. Verify the splash and Google sign-in on a native release build. [Expo splash screen behavior](https://docs.expo.dev/versions/v58.0.0/sdk/splash-screen/).
+The current Android application ID is `com.samikshajangid.laundrytrack`. EAS can build an installable APK with the `preview` profile after the Expo project and existing signing credentials are configured:
+
+```sh
+cd frontend
+npx eas-cli@latest build --platform android --profile preview
+```
+
+The native splash uses the app mark and teal background; a branded loading screen covers session restoration. Login/signup uses a compact two-step signup form without scrolling, including while the keyboard is open.

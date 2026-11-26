@@ -18,20 +18,15 @@ import { Brand, Button, Field, Icon, colors } from '../components/UI';
 import LaunchScreen from '../components/LaunchScreen';
 
 export default function SignIn() {
-  const { user, loading, login, verifyEmail, resendCode, googleLogin, notice, storageError } =
-    useSession();
+  const { user, loading, login, notice, storageError } = useSession();
   const { height, fontScale } = useWindowDimensions();
   const [mode, setMode] = useState('login');
   const [step, setStep] = useState(0);
   const [form, setForm] = useState({ name: '', phone: '', email: '', password: '' });
-  const [verification, setVerification] = useState(null);
-  const [code, setCode] = useState('');
   const [visible, setVisible] = useState(false);
   const [keyboard, setKeyboard] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const [message, setMessage] = useState('');
-  const [now, setNow] = useState(Date.now());
   useEffect(() => {
     const show = Keyboard.addListener('keyboardDidShow', () => setKeyboard(true));
     const hide = Keyboard.addListener('keyboardDidHide', () => setKeyboard(false));
@@ -40,17 +35,9 @@ export default function SignIn() {
       hide.remove();
     };
   }, []);
-  useEffect(() => {
-    if (!verification) return;
-    const timer = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(timer);
-  }, [verification]);
   const compact = keyboard || height < 720 || fontScale > 1.2;
   const register = mode === 'register';
-  const profile = register && step === 1 && !verification;
-  const remaining = verification
-    ? Math.max(0, Math.ceil((Date.parse(verification.resendAt) - now) / 1000))
-    : 0;
+  const profile = register && step === 1;
   if (loading) return <LaunchScreen />;
   if (user) return <Redirect href="/(tabs)/home" />;
   const update = (key) => (value) => setForm((old) => ({ ...old, [key]: value }));
@@ -58,16 +45,12 @@ export default function SignIn() {
     if (busy) return;
     setMode(value);
     setStep(0);
-    setVerification(null);
-    setCode('');
     setError('');
-    setMessage('');
   }
   async function submit() {
     if (busy) return;
     setError('');
-    setMessage('');
-    if (register && step === 0 && !verification) {
+    if (register && step === 0) {
       const result = loginSchema
         .extend({ password: registerSchema.shape.password })
         .safeParse(form);
@@ -83,19 +66,9 @@ export default function SignIn() {
     setBusy(true);
     Keyboard.dismiss();
     try {
-      if (verification) {
-        if (!/^\d{6}$/.test(code)) throw new Error('Enter the six-digit code from your email.');
-        await verifyEmail(verification.id, code);
-      } else {
-        const parsed = (register ? registerSchema : loginSchema).safeParse(form);
-        if (!parsed.success) throw new Error(parsed.error.issues[0].message);
-        const result = await login(parsed.data, register);
-        if (result.verification) {
-          setVerification(result.verification);
-          setNow(Date.now());
-          Keyboard.dismiss();
-        }
-      }
+      const parsed = (register ? registerSchema : loginSchema).safeParse(form);
+      if (!parsed.success) throw new Error(parsed.error.issues[0].message);
+      await login(parsed.data, register);
     } catch (e) {
       setError(e.message);
       Keyboard.dismiss();
@@ -103,18 +76,10 @@ export default function SignIn() {
       setBusy(false);
     }
   }
-  const title = verification
-    ? 'Check your inbox'
-    : profile
-      ? 'A little about you'
-      : register
-        ? 'Your fresh start'
-        : 'Welcome back';
-  const subtitle = verification
-    ? `Enter the code sent to ${verification.email}`
-    : profile
-      ? 'Your name and number help us find your doorstep.'
-      : 'Fresh laundry. More time for you.';
+  const title = profile ? 'A little about you' : register ? 'Your fresh start' : 'Welcome back';
+  const subtitle = profile
+    ? 'Your name and number help us find your doorstep.'
+    : 'Fresh laundry. More time for you.';
   return (
     <SafeAreaView style={styles.page} edges={['top', 'bottom']}>
       <StatusBar style="light" />
@@ -151,7 +116,7 @@ export default function SignIn() {
             keyboard && { flex: 1, justifyContent: 'flex-start', paddingTop: 8, paddingBottom: 8 },
           ]}
         >
-          {!verification && !keyboard && (
+          {!keyboard && (
             <View style={styles.tabs}>
               {[
                 ['login', 'Sign in'],
@@ -179,15 +144,13 @@ export default function SignIn() {
               </Text>
               {!keyboard && <Text style={styles.subtitle}>{subtitle}</Text>}
             </View>
-            {(profile || verification) && (
+            {profile && (
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel="Back"
                 disabled={busy}
                 onPress={() => {
-                  setVerification(null);
                   setStep(0);
-                  setCode('');
                   setError('');
                 }}
                 style={styles.back}
@@ -196,22 +159,7 @@ export default function SignIn() {
               </Pressable>
             )}
           </View>
-          {verification ? (
-            <Field
-              compact
-              label="Verification code"
-              icon="shield-checkmark-outline"
-              value={code}
-              onChangeText={(value) => setCode(value.replace(/\D/g, '').slice(0, 6))}
-              keyboardType="number-pad"
-              autoComplete="one-time-code"
-              textContentType="oneTimeCode"
-              placeholder="6-digit code"
-              maxLength={6}
-              returnKeyType="done"
-              onSubmitEditing={submit}
-            />
-          ) : profile ? (
+          {profile ? (
             <>
               <Field
                 compact
@@ -282,101 +230,25 @@ export default function SignIn() {
               />
             </>
           )}
-          {(error || storageError || message || notice) && (
+          {(error || storageError || notice) && (
             <Text
               accessibilityLiveRegion="polite"
               style={[styles.feedback, (error || storageError) && { color: '#B54735' }]}
             >
-              {error || storageError?.message || message || notice}
+              {error || storageError?.message || notice}
             </Text>
           )}
           <Button
-            title={
-              verification
-                ? 'Verify & continue'
-                : profile
-                  ? 'Send verification code'
-                  : register
-                    ? 'Continue'
-                    : 'Sign in'
-            }
+            title={profile ? 'Create account' : register ? 'Continue' : 'Sign in'}
             busy={busy}
             icon="arrow-forward"
             onPress={submit}
             style={{ marginTop: 2, minHeight: compact ? 46 : 50 }}
           />
-          {verification ? (
-            <Pressable
-              accessibilityRole="button"
-              disabled={busy || remaining > 0}
-              onPress={async () => {
-                setBusy(true);
-                setError('');
-                try {
-                  const result = await resendCode(verification.id);
-                  setVerification(result.verification);
-                  setNow(Date.now());
-                  setMessage('A new code has been sent.');
-                  setCode('');
-                } catch (e) {
-                  setError(e.message);
-                } finally {
-                  setBusy(false);
-                }
-              }}
-              style={styles.resend}
-            >
-              <Text
-                style={{
-                  color: remaining ? colors.muted : colors.green,
-                  fontSize: 13,
-                  fontWeight: '600',
-                }}
-              >
-                {remaining ? `Resend code in ${remaining}s` : 'Resend code'}
-              </Text>
-            </Pressable>
-          ) : (
-            !profile &&
-            !keyboard && (
-              <>
-                <View style={[styles.or, compact && { marginVertical: 10 }]}>
-                  <View style={styles.line} />
-                  <Text style={styles.orText}>or continue with</Text>
-                  <View style={styles.line} />
-                </View>
-                <Button
-                  title="Google"
-                  variant="secondary"
-                  icon="logo-google"
-                  disabled={busy}
-                  style={{ marginTop: 0, minHeight: compact ? 44 : 48 }}
-                  onPress={async () => {
-                    setBusy(true);
-                    setError('');
-                    try {
-                      const result = await googleLogin();
-                      if (result?.verification) {
-                        setVerification(result.verification);
-                        setNow(Date.now());
-                        Keyboard.dismiss();
-                      }
-                    } catch (e) {
-                      setError(e.message);
-                    } finally {
-                      setBusy(false);
-                    }
-                  }}
-                />
-              </>
-            )
-          )}
           {!compact && (
             <View style={styles.trust}>
               <Icon name="shield-checkmark-outline" size={15} />
-              <Text style={styles.trustText}>
-                Verified accounts. Tracked garments. Clear prices.
-              </Text>
+              <Text style={styles.trustText}>Secure sign-in. Tracked garments. Clear prices.</Text>
             </View>
           )}
         </View>

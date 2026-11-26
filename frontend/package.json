@@ -5,7 +5,6 @@
   "dependencies": {
     "@expo/vector-icons": "^15.0.2",
     "@laundrytrack/shared": "file:../backend/shared",
-    "@react-native-google-signin/google-signin": "^17.0.0",
     "expo": "~58.0.26",
     "expo-build-properties": "~58.0.12",
     "expo-camera": "~58.0.14",

@@ -89,10 +89,6 @@ export function managementRouter(db) {
         'Owner accounts cannot be changed here.',
         403,
       );
-      requireValue(
-        input.role !== 'staff' || target.role === 'staff' || target.email_verified_at,
-        'The customer must verify their email before staff approval.',
-      );
       const data = {
         ...(input.role
           ? {

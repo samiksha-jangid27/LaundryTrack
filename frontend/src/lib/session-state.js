@@ -7,7 +7,6 @@ export function readSavedSession(value) {
       typeof saved?.user?.id !== 'string' ||
       typeof saved.user.name !== 'string' ||
       !['customer', 'staff', 'owner'].includes(saved.user.role) ||
-      (saved.user.role === 'customer' && saved.user.emailVerified !== true) ||
       !Number.isFinite(Date.parse(saved.expiresAt))
     )
       return null;

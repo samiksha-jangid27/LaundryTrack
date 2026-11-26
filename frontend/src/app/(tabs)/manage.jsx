@@ -67,15 +67,6 @@ function ManagedAccount({ account, reload }) {
         {account._count.orders} personal orders · {account._count.assignments} assignments ·{' '}
         {account._count.tickets} queries
       </Body>
-      <Text
-        style={{
-          color: account.email_verified_at ? colors.green : '#AD7025',
-          fontSize: 11,
-          marginTop: 10,
-        }}
-      >
-        {account.email_verified_at ? 'Email verified' : 'Email not verified'}
-      </Text>
       {account.staff_requested_at && (
         <View
           style={{ padding: 12, borderRadius: 12, backgroundColor: colors.mint, marginTop: 12 }}
@@ -112,7 +103,7 @@ function ManagedAccount({ account, reload }) {
                 account.role !== 'staff' &&
                 Alert.alert(
                   'Approve staff access?',
-                  'This person will be able to handle assigned orders and customer queries. Their email must be verified.',
+                  'This person will be able to handle assigned orders and customer queries. Approve only people you trust to handle outlet work.',
                   [
                     { text: 'Cancel', style: 'cancel' },
                     { text: 'Approve', onPress: () => change({ role: 'staff' }) },

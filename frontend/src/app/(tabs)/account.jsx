@@ -39,8 +39,7 @@ function OutletSummary() {
   );
 }
 export default function Account() {
-  const { user, logout, linkGoogle, updateProfile, requestStaffAccess, refreshProfile } =
-    useSession();
+  const { user, logout, updateProfile, requestStaffAccess, refreshProfile } = useSession();
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(user.name);
   const [phone, setPhone] = useState(user.phone);
@@ -218,33 +217,6 @@ export default function Account() {
           variant="secondary"
           onPress={() => router.push('/(tabs)/support')}
         />
-      </Card>
-      <Card>
-        <SectionTitle>Sign-in methods</SectionTitle>
-        <Body>
-          {user.googleLinked
-            ? 'Your Google account is connected.'
-            : 'Connect the Google account with the same email for quicker sign-in.'}
-        </Body>
-        {!user.googleLinked && (
-          <Button
-            title="Connect Google"
-            variant="secondary"
-            icon="logo-google"
-            busy={busy}
-            onPress={async () => {
-              setBusy(true);
-              setError(null);
-              try {
-                if (await linkGoogle()) setMessage('Google account connected.');
-              } catch (e) {
-                setError(e);
-              } finally {
-                setBusy(false);
-              }
-            }}
-          />
-        )}
       </Card>
       {(canOperate(user) || count > 0) && (
         <>

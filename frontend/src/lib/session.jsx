@@ -2,7 +2,6 @@ import { createContext, useContext, useState, useEffect, useCallback } from 'rea
 import { api, secret, setToken, onUnauthorized } from './api';
 import { clearLocal, listPending } from './storage';
 import { readSavedSession } from './session-state';
-import { getGoogleIdToken } from './google';
 import { unregisterPushDevice } from './push';
 const Context = createContext(null);
 export function SessionProvider({ children }) {
@@ -58,10 +57,6 @@ export function SessionProvider({ children }) {
     };
   }, []);
   async function saveSession(result) {
-    if (result.user?.role === 'customer' && result.user.emailVerified !== true)
-      throw new Error(
-        'Email verification is required. Please try again after the service is updated.',
-      );
     try {
       await secret.set(
         'laundrytrack.session',
@@ -82,32 +77,8 @@ export function SessionProvider({ children }) {
       method: 'POST',
       body: input,
     });
-    if (!result.verification) await saveSession(result);
-    return result;
-  }
-  async function verifyEmail(verificationId, code) {
-    const result = await api('/auth/verify-email', {
-      method: 'POST',
-      body: { verificationId, code },
-    });
     await saveSession(result);
-  }
-  async function resendCode(verificationId) {
-    return api('/auth/resend-code', { method: 'POST', body: { verificationId } });
-  }
-  async function googleLogin() {
-    const idToken = await getGoogleIdToken();
-    if (!idToken) return;
-    const result = await api('/auth/google', { method: 'POST', body: { idToken } });
-    if (!result.verification) await saveSession(result);
     return result;
-  }
-  async function linkGoogle() {
-    const idToken = await getGoogleIdToken();
-    if (!idToken) return false;
-    const result = await api('/auth/google/link', { method: 'POST', body: { idToken } });
-    await updateUser(result.user);
-    return true;
   }
   const updateUser = useCallback(async (next) => {
     const saved = readSavedSession(await secret.get('laundrytrack.session'));
@@ -148,10 +119,6 @@ export function SessionProvider({ children }) {
         loading,
         login,
         logout,
-        verifyEmail,
-        resendCode,
-        googleLogin,
-        linkGoogle,
         updateProfile,
         requestStaffAccess,
         refreshProfile,

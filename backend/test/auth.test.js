@@ -20,7 +20,7 @@ test('customers cannot read other customers orders or perform outlet work', asyn
       password: 'another-password',
     },
   });
-  const signedIn = await f.verify(r);
+  const signedIn = r;
   assert.equal(
     (await f.request(`/orders/${order.id}`, { token: signedIn.data.token })).status,
     404,
@@ -44,9 +44,9 @@ test('registration cannot self assign staff privileges', async (t) => {
       role: 'owner',
     },
   });
-  assert.equal(r.status, 202);
-  assert.equal(r.data.token, undefined);
-  assert.equal((await f.verify(r)).data.user.role, 'customer');
+  assert.equal(r.status, 201);
+  assert.ok(r.data.token);
+  assert.equal(r.data.user.role, 'customer');
   assert.ok(!JSON.stringify(r.data).includes('password_hash'));
   assert.equal(
     (

@@ -7,8 +7,7 @@ if (existsSync(testEnv)) loadEnvFile(testEnv);
 import { initializeCatalog } from '../src/catalog.js';
 import { createApp } from '../src/app.js';
 import { hashPassword } from '../src/auth.js';
-import { HttpError } from '../src/errors.js';
-export async function fixture(t, { google = {}, sendCode } = {}) {
+export async function fixture(t) {
   const url = process.env.TEST_DATABASE_URL;
   if (!url || !new URL(url).pathname.endsWith('_test'))
     throw new Error(
@@ -51,18 +50,7 @@ export async function fixture(t, { google = {}, sendCode } = {}) {
     });
     users[role] = { id };
   }
-  const sent = [];
-  const server = createApp(db, {
-    sendCode:
-      sendCode ||
-      (async (message) => {
-        sent.push(message);
-      }),
-    verifyGoogle: async (token) => {
-      if (!google[token]) throw new HttpError(401, 'Invalid Google token');
-      return google[token];
-    },
-  }).listen(0, '127.0.0.1');
+  const server = createApp(db).listen(0, '127.0.0.1');
   await new Promise((resolve, reject) => {
     server.once('listening', resolve);
     server.once('error', reject);
@@ -129,14 +117,6 @@ export async function fixture(t, { google = {}, sendCode } = {}) {
     if (r.status !== 200 && r.status !== 201) throw new Error(JSON.stringify(r));
     return r.data.order;
   }
-  const verify = (response) =>
-    request('/auth/verify-email', {
-      method: 'POST',
-      body: {
-        verificationId: response.data.verification.id,
-        code: sent.find((message) => message.id === response.data.verification.id).code,
-      },
-    });
   return {
     db,
     users,
@@ -148,7 +128,5 @@ export async function fixture(t, { google = {}, sendCode } = {}) {
     action,
     mutate,
     baseUrl: base,
-    sent,
-    verify,
   };
 }
