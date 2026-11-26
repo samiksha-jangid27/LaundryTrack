@@ -1,4 +1,4 @@
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, router } from 'expo-router';
 import { useState, useCallback } from 'react';
 import { View, Text, Alert } from 'react-native';
 import { canOperate, STAGE_LABELS } from '@laundrytrack/shared';
@@ -15,6 +15,7 @@ import {
   Body,
   Button,
   Feedback,
+  Field,
   Icon,
   colors,
   s,
@@ -38,7 +39,11 @@ function OutletSummary() {
   );
 }
 export default function Account() {
-  const { user, logout } = useSession();
+  const { user, logout, linkGoogle, updateProfile, requestStaffAccess, refreshProfile } =
+    useSession();
+  const [editing, setEditing] = useState(false);
+  const [name, setName] = useState(user.name);
+  const [phone, setPhone] = useState(user.phone);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
   const [message, setMessage] = useState('');
@@ -46,7 +51,10 @@ export default function Account() {
   useFocusEffect(
     useCallback(() => {
       setCount(pendingScans(user.id).length);
-    }, [user.id]),
+      refreshProfile().catch((e) => {
+        if (!e.offline && e.status !== 401) setError(e);
+      });
+    }, [user.id, refreshProfile]),
   );
   async function signOut() {
     if (pendingScans(user.id).length) {
@@ -67,9 +75,16 @@ export default function Account() {
       <Heading
         eyebrow="The little details"
         title="Your account."
-        subtitle="Your profile, connection and saved work."
+        subtitle="Your profile, sign-in methods and saved work."
       />
       <Feedback error={error} message={message} />
+      <Button
+        title="Notifications & phone alerts"
+        variant="secondary"
+        icon="notifications-outline"
+        onPress={() => router.push('/notifications')}
+        style={{ marginBottom: 16 }}
+      />
       <Card>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 15, marginBottom: 21 }}>
           <View
@@ -77,14 +92,14 @@ export default function Account() {
               height: 53,
               width: 53,
               borderRadius: 27,
-              backgroundColor: '#e9f1dc',
+              backgroundColor: colors.mint,
               alignItems: 'center',
               justifyContent: 'center',
             }}
           >
             <Icon name="person-outline" size={27} />
           </View>
-          <View>
+          <View style={{ flex: 1 }}>
             <Text style={{ fontSize: 20, color: colors.ink, fontWeight: '600' }}>{user.name}</Text>
             <Body>
               {user.role === 'owner'
@@ -96,9 +111,142 @@ export default function Account() {
           </View>
         </View>
         <Body>{user.email}</Body>
-        <Body style={{ marginTop: 8 }}>{user.phone}</Body>
+        <Body style={{ marginTop: 8 }}>
+          {user.phone || 'Add your mobile number when booking a pickup.'}
+        </Body>
+        {user.emailVerified && (
+          <View style={{ flexDirection: 'row', gap: 6, marginTop: 12, alignItems: 'center' }}>
+            <Icon name="shield-checkmark" size={17} />
+            <Text style={{ color: colors.green, fontSize: 12, fontWeight: '700' }}>
+              Email verified
+            </Text>
+          </View>
+        )}
+        <Button
+          title={editing ? 'Cancel edit' : 'Edit profile'}
+          variant="secondary"
+          onPress={() => {
+            setEditing(!editing);
+            setName(user.name);
+            setPhone(user.phone);
+          }}
+          disabled={busy}
+        />
+        {editing && (
+          <View style={{ marginTop: 16 }}>
+            <Field label="Full name" value={name} onChangeText={setName} maxLength={80} />
+            <Field
+              label="Mobile number"
+              value={phone}
+              onChangeText={setPhone}
+              keyboardType="phone-pad"
+              maxLength={10}
+            />
+            <Button
+              title="Save profile"
+              busy={busy}
+              onPress={async () => {
+                setBusy(true);
+                setError(null);
+                try {
+                  await updateProfile({ name, phone });
+                  setEditing(false);
+                  setMessage('Profile updated.');
+                } catch (e) {
+                  setError(e);
+                } finally {
+                  setBusy(false);
+                }
+              }}
+            />
+          </View>
+        )}
       </Card>
-      {canOperate(user) && (
+      {user.role === 'customer' && (
+        <Card>
+          <SectionTitle>Work with the outlet</SectionTitle>
+          <Body>
+            {user.staffRequestStatus === 'declined'
+              ? 'The owner declined your staff request. Contact the outlet if you need clarification.'
+              : user.staffRequestedAt
+                ? 'Your staff access request is awaiting owner review.'
+                : 'Request staff access if you are part of the outlet team. The owner reviews every request.'}
+          </Body>
+          {!user.staffRequestedAt && (
+            <Button
+              title="Request staff access"
+              variant="secondary"
+              busy={busy}
+              onPress={async () => {
+                setBusy(true);
+                setError(null);
+                try {
+                  await requestStaffAccess();
+                  setMessage('Staff access requested. The owner will review it.');
+                } catch (e) {
+                  setError(e);
+                } finally {
+                  setBusy(false);
+                }
+              }}
+            />
+          )}
+        </Card>
+      )}
+      {user.role === 'staff' && (
+        <Card>
+          <SectionTitle>Your personal laundry</SectionTitle>
+          <Body>Your staff account can also book and track your own pickups.</Body>
+          <Button
+            title="My personal orders"
+            variant="secondary"
+            onPress={() => router.push({ pathname: '/(tabs)/orders', params: { scope: 'mine' } })}
+          />
+        </Card>
+      )}
+      <Card>
+        <SectionTitle>
+          {user.role === 'owner' ? 'Owner inbox' : 'Questions for the owner'}
+        </SectionTitle>
+        <Body>
+          {user.role === 'staff'
+            ? 'Raise a private staff query or check replies from the owner.'
+            : 'View your queries, responses and resolutions.'}
+        </Body>
+        <Button
+          title="Open support"
+          variant="secondary"
+          onPress={() => router.push('/(tabs)/support')}
+        />
+      </Card>
+      <Card>
+        <SectionTitle>Sign-in methods</SectionTitle>
+        <Body>
+          {user.googleLinked
+            ? 'Your Google account is connected.'
+            : 'Connect the Google account with the same email for quicker sign-in.'}
+        </Body>
+        {!user.googleLinked && (
+          <Button
+            title="Connect Google"
+            variant="secondary"
+            icon="logo-google"
+            busy={busy}
+            onPress={async () => {
+              setBusy(true);
+              setError(null);
+              try {
+                if (await linkGoogle()) setMessage('Google account connected.');
+              } catch (e) {
+                setError(e);
+              } finally {
+                setBusy(false);
+              }
+            }}
+          />
+        )}
+      </Card>
+      {(canOperate(user) || count > 0) && (
         <>
           <Card>
             <SectionTitle>Saved packing scans</SectionTitle>
@@ -108,6 +256,7 @@ export default function Account() {
             </Body>
             <Button
               title="Sync saved scans"
+              disabled={!canOperate(user)}
               busy={busy}
               onPress={async () => {
                 setBusy(true);
@@ -150,7 +299,7 @@ export default function Account() {
               />
             )}
           </Card>
-          <OutletSummary />
+          {canOperate(user) && <OutletSummary />}
         </>
       )}
       {user.role === 'owner' && (
@@ -174,7 +323,7 @@ export default function Account() {
           />
         </Card>
       )}
-      <Card style={{ backgroundColor: '#edf3e4' }}>
+      <Card style={{ backgroundColor: colors.mint }}>
         <SectionTitle>Care, with a clear trail.</SectionTitle>
         <Body>
           LaundryTrack tracks custody, counted receipts, packing reconciliation and customer

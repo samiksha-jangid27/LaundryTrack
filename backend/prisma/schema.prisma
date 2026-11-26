@@ -33,23 +33,114 @@ enum IssueStatus {
   resolved
 }
 
+enum TicketStatus {
+  open
+  in_progress
+  resolved
+}
+
+enum StaffRequestStatus {
+  pending
+  approved
+  declined
+}
+
 model User {
-  id               String           @id @default(uuid())
-  name             String
-  email            String           @unique
-  phone            String
-  role             Role             @default(customer)
-  password_hash    String
-  created_at       DateTime         @default(now())
-  sessions         Session[]
-  orders           Order[]          @relation("CustomerOrders")
-  assignments      Order[]          @relation("AssignedOrders")
-  events           Event[]
-  actions          Action[]
-  issues           Issue[]
-  booking_requests BookingRequest[]
+  id                   String              @id @default(uuid())
+  name                 String
+  email                String              @unique
+  phone                String
+  role                 Role                @default(customer)
+  password_hash        String
+  email_verified_at    DateTime?
+  google_sub           String?             @unique
+  active               Boolean             @default(true)
+  version              Int                 @default(0)
+  staff_requested_at   DateTime?
+  staff_request_status StaffRequestStatus?
+  created_at           DateTime            @default(now())
+  push_enabled         Boolean             @default(true)
+  notifications        Notification[]
+  push_devices         PushDevice[]
+  email_verification   EmailVerification?
+  sessions             Session[]
+  orders               Order[]             @relation("CustomerOrders")
+  assignments          Order[]             @relation("AssignedOrders")
+  events               Event[]
+  actions              Action[]
+  issues               Issue[]
+  booking_requests     BookingRequest[]
+  tickets              Ticket[]            @relation("RequestedTickets")
+  assigned_tickets     Ticket[]            @relation("AssignedTickets")
+  ticket_messages      TicketMessage[]
+  account_events       AccountEvent[]      @relation("AccountTarget")
+  account_actions      AccountEvent[]      @relation("AccountActor")
 
   @@map("users")
+}
+
+model Notification {
+  id          String         @id @default(uuid())
+  user_id     String
+  event_key   String
+  category    String
+  title       String
+  body        String
+  target_type String
+  target_id   String?
+  created_at  DateTime       @default(now())
+  read_at     DateTime?
+  user        User           @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  deliveries  PushDelivery[]
+
+  @@unique([user_id, event_key])
+  @@index([user_id, created_at, id])
+  @@index([user_id, read_at])
+  @@map("notifications")
+}
+
+model PushDevice {
+  id          String         @id
+  user_id     String
+  expo_token  String         @unique
+  platform    String
+  enabled     Boolean        @default(true)
+  updated_at  DateTime       @default(now())
+  user        User           @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  deliveries  PushDelivery[]
+
+  @@index([user_id])
+  @@map("push_devices")
+}
+
+model PushDelivery {
+  id              String       @id @default(uuid())
+  notification_id String
+  device_id       String
+  state           String       @default("pending")
+  attempts        Int          @default(0)
+  next_attempt    DateTime     @default(now())
+  ticket_id       String?
+  last_error      String?
+  created_at      DateTime     @default(now())
+  notification    Notification @relation(fields: [notification_id], references: [id], onDelete: Cascade)
+  device          PushDevice   @relation(fields: [device_id], references: [id], onDelete: Cascade)
+
+  @@unique([notification_id, device_id])
+  @@index([state, next_attempt])
+  @@map("push_deliveries")
+}
+
+model EmailVerification {
+  id           String   @id @default(uuid())
+  user_id      String   @unique
+  code_hash    String
+  expires_at   DateTime
+  resend_after DateTime
+  attempts     Int      @default(0)
+  user         User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@map("email_verifications")
 }
 
 model Session {
@@ -103,9 +194,63 @@ model Order {
   actions            Action[]
   issues             Issue[]
   booking_requests   BookingRequest[]
+  tickets            Ticket[]
 
   @@index([customer_id, created_at])
   @@map("orders")
+}
+
+model Ticket {
+  id             String          @id @default(uuid())
+  subject        String
+  category       String
+  requester_id   String
+  requester_role Role            @default(customer)
+  assigned_to    String?
+  order_id       String?
+  status         TicketStatus    @default(open)
+  version        Int             @default(0)
+  request_hash   String
+  created_at     DateTime        @default(now())
+  updated_at     DateTime        @default(now())
+  requester      User            @relation("RequestedTickets", fields: [requester_id], references: [id])
+  assigned       User?           @relation("AssignedTickets", fields: [assigned_to], references: [id])
+  order          Order?          @relation(fields: [order_id], references: [id])
+  messages       TicketMessage[]
+
+  @@index([requester_id, updated_at])
+  @@index([assigned_to, status])
+  @@map("tickets")
+}
+
+model TicketMessage {
+  id           String   @id @default(uuid())
+  ticket_id    String
+  author_id    String
+  author_role  Role
+  kind         String   @default("reply")
+  request_hash String   @default("")
+  body         String
+  created_at   DateTime @default(now())
+  ticket       Ticket   @relation(fields: [ticket_id], references: [id], onDelete: Cascade)
+  author       User     @relation(fields: [author_id], references: [id])
+
+  @@index([ticket_id, created_at])
+  @@map("ticket_messages")
+}
+
+model AccountEvent {
+  id         String   @id @default(uuid())
+  target_id  String
+  actor_id   String
+  kind       String
+  detail     String
+  created_at DateTime @default(now())
+  target     User     @relation("AccountTarget", fields: [target_id], references: [id])
+  actor      User     @relation("AccountActor", fields: [actor_id], references: [id])
+
+  @@index([created_at])
+  @@map("account_events")
 }
 
 model OrderItem {

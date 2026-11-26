@@ -7,7 +7,8 @@ if (existsSync(testEnv)) loadEnvFile(testEnv);
 import { initializeCatalog } from '../src/catalog.js';
 import { createApp } from '../src/app.js';
 import { hashPassword } from '../src/auth.js';
-export async function fixture(t) {
+import { HttpError } from '../src/errors.js';
+export async function fixture(t, { google = {}, sendCode } = {}) {
   const url = process.env.TEST_DATABASE_URL;
   if (!url || !new URL(url).pathname.endsWith('_test'))
     throw new Error(
@@ -16,6 +17,12 @@ export async function fixture(t) {
   const db = createDatabase(url);
   await db.$connect();
   await db.$transaction([
+    db.pushDelivery.deleteMany(),
+    db.pushDevice.deleteMany(),
+    db.notification.deleteMany(),
+    db.ticketMessage.deleteMany(),
+    db.ticket.deleteMany(),
+    db.accountEvent.deleteMany(),
     db.bookingRequest.deleteMany(),
     db.action.deleteMany(),
     db.event.deleteMany(),
@@ -39,11 +46,23 @@ export async function fixture(t) {
         phone: '9876543210',
         role,
         password_hash: hashPassword('test-password-123'),
+        email_verified_at: new Date(),
       },
     });
     users[role] = { id };
   }
-  const server = createApp(db).listen(0, '127.0.0.1');
+  const sent = [];
+  const server = createApp(db, {
+    sendCode:
+      sendCode ||
+      (async (message) => {
+        sent.push(message);
+      }),
+    verifyGoogle: async (token) => {
+      if (!google[token]) throw new HttpError(401, 'Invalid Google token');
+      return google[token];
+    },
+  }).listen(0, '127.0.0.1');
   await new Promise((resolve, reject) => {
     server.once('listening', resolve);
     server.once('error', reject);
@@ -74,7 +93,8 @@ export async function fixture(t) {
   const customer = (path, options = {}) =>
     request(path, { token: users.customer.token, ...options });
   const staff = (path, options = {}) => request(path, { token: users.staff.token, ...options });
-  async function book(quantity = 2) {
+  const owner = (path, options = {}) => request(path, { token: users.owner.token, ...options });
+  async function book(quantity = 2, assigned = true) {
     const r = await customer('/orders', {
       method: 'POST',
       body: {
@@ -86,6 +106,13 @@ export async function fixture(t) {
       },
     });
     if (r.status !== 201) throw new Error(JSON.stringify(r));
+    if (assigned) {
+      await db.order.update({
+        where: { id: r.data.order.id },
+        data: { assigned_to: users.staff.id },
+      });
+      r.data.order.assigned_to = users.staff.id;
+    }
     return r.data.order;
   }
   const action = (order, values = {}) => ({
@@ -94,6 +121,7 @@ export async function fixture(t) {
     ...values,
   });
   async function mutate(order, route, values = {}, actor = staff) {
+    if (route === 'assign' && actor === staff) actor = owner;
     const r = await actor(`/orders/${order.id}/${route}`, {
       method: 'POST',
       body: action(order, values),
@@ -101,5 +129,26 @@ export async function fixture(t) {
     if (r.status !== 200 && r.status !== 201) throw new Error(JSON.stringify(r));
     return r.data.order;
   }
-  return { db, users, request, customer, staff, book, action, mutate, baseUrl: base };
+  const verify = (response) =>
+    request('/auth/verify-email', {
+      method: 'POST',
+      body: {
+        verificationId: response.data.verification.id,
+        code: sent.find((message) => message.id === response.data.verification.id).code,
+      },
+    });
+  return {
+    db,
+    users,
+    request,
+    customer,
+    staff,
+    owner,
+    book,
+    action,
+    mutate,
+    baseUrl: base,
+    sent,
+    verify,
+  };
 }

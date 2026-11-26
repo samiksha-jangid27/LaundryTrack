@@ -4,9 +4,10 @@ import { randomInt } from 'node:crypto';
 import QRCode from 'qrcode';
 import { nextStage, garmentSchema, issueSchema, tagPayload } from '@laundrytrack/shared';
 import { estimateOrder } from './estimates.js';
-import { operator, digest } from './auth.js';
+import { operator, owner, digest } from './auth.js';
 import { accessibleOrder, createOrder, orderDetail, mutateOrder, event, now } from './orders.js';
 import { requireValue, HttpError } from './errors.js';
+import { notify } from './notifications.js';
 
 export function orderRouter(db) {
   const router = Router();
@@ -16,7 +17,12 @@ export function orderRouter(db) {
   }
   router.get('/', async (req, res) => {
     const rows = await db.order.findMany({
-      where: req.user.role === 'customer' ? { customer_id: req.user.id } : {},
+      where:
+        req.user.role === 'customer' || req.query.scope === 'mine'
+          ? { customer_id: req.user.id }
+          : req.user.role === 'staff'
+            ? { assigned_to: req.user.id }
+            : {},
       orderBy: { sequence: 'desc' },
       take: 500,
       select: {
@@ -28,6 +34,7 @@ export function orderRouter(db) {
         slot: true,
         expected_count: true,
         collected_count: true,
+        assigned_to: true,
         created_at: true,
         version: true,
         customer: { select: { name: true } },
@@ -47,7 +54,6 @@ export function orderRouter(db) {
     });
   });
   router.post('/', async (req, res) => {
-    requireValue(req.user.role === 'customer', 'Sign in as a customer to book a pickup', 403);
     res.status(201).json({ order: await createOrder(db, req.user, req.body) });
   });
   router.get('/:id/estimate', async (req, res) =>
@@ -77,21 +83,36 @@ export function orderRouter(db) {
   );
   router.post('/:id/cancel', async (req, res) =>
     change(req, res, 'cancel', async (tx, order) => {
+      requireValue(
+        req.user.role === 'owner' || order.customer_id === req.user.id,
+        'Only the customer or owner can cancel this booking.',
+        403,
+      );
       requireValue(order.stage === 'booked', 'Only uncollected bookings can be cancelled', 409);
       await tx.order.update({ where: { id: order.id }, data: { stage: 'cancelled' } });
       await event(tx, order.id, req.user, 'cancelled', 'Pickup cancelled');
     }),
   );
-  router.post('/:id/assign', operator, async (req, res) => {
+  router.post('/:id/assign', owner, async (req, res) => {
     const { staffId } = z.object({ staffId: z.uuid() }).parse(req.body);
-    const staff = await db.user.findFirst({
-      where: { id: staffId, role: { in: ['staff', 'owner'] } },
-    });
-    requireValue(staff, 'Staff member not found', 404);
     return change(req, res, 'assign', async (tx, order) => {
+      const staff = await tx.user.findFirst({
+        where: { id: staffId, role: { in: ['staff', 'owner'] }, active: true },
+      });
+      requireValue(staff, 'Staff member not found', 404);
       requireValue(!['cancelled', 'delivered'].includes(order.stage), 'Order is closed', 409);
       await tx.order.update({ where: { id: order.id }, data: { assigned_to: staff.id } });
-      await event(tx, order.id, req.user, 'assigned', `Assigned to ${staff.name}`);
+      const entry = await event(tx, order.id, req.user, 'assigned', `Assigned to ${staff.name}`);
+      if (order.assigned_to && order.assigned_to !== staff.id)
+        await notify(tx, {
+          key: `order-unassigned:${entry.id}`,
+          userIds: [order.assigned_to],
+          excludeId: req.user.id,
+          category: 'order',
+          title: 'Order assignment removed',
+          body: 'An order has been removed from your work queue.',
+          targetType: 'orders',
+        });
     });
   });
   router.post('/:id/collect', operator, async (req, res) => {
@@ -210,11 +231,6 @@ export function orderRouter(db) {
     });
   });
   router.post('/:id/delivery-code', async (req, res) => {
-    requireValue(
-      req.user.role === 'customer',
-      'Only the customer can reset the delivery code',
-      403,
-    );
     const code = String(randomInt(100000, 1000000));
     const result = await mutateOrder(
       db,
@@ -223,6 +239,11 @@ export function orderRouter(db) {
       'delivery-code',
       req.body,
       async (tx, order) => {
+        requireValue(
+          order.customer_id === req.user.id,
+          'Only the booking customer can reset the delivery code.',
+          403,
+        );
         requireValue(!['cancelled', 'delivered'].includes(order.stage), 'Order is closed', 409);
         await tx.order.update({
           where: { id: order.id },
@@ -276,7 +297,11 @@ export function orderRouter(db) {
       res,
       'issue',
       async (tx, order) => {
-        requireValue(req.user.role === 'customer', 'Only customers can raise an issue', 403);
+        requireValue(
+          order.customer_id === req.user.id,
+          'Only the booking customer can raise this issue',
+          403,
+        );
         if (input.garmentId)
           requireValue(
             await tx.garment.findFirst({ where: { id: input.garmentId, order_id: order.id } }),
@@ -315,15 +340,13 @@ export function orderRouter(db) {
       where: { id: req.params.garmentId, order_id: req.params.id },
     });
     if (!garment) throw new HttpError(404, 'Garment not found');
-    res
-      .type('svg')
-      .send(
-        await QRCode.toString(tagPayload(garment.id), {
-          type: 'svg',
-          margin: 1,
-          errorCorrectionLevel: 'M',
-        }),
-      );
+    res.type('svg').send(
+      await QRCode.toString(tagPayload(garment.id), {
+        type: 'svg',
+        margin: 1,
+        errorCorrectionLevel: 'M',
+      }),
+    );
   });
   return router;
 }

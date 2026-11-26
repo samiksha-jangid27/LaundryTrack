@@ -2,20 +2,57 @@ import { Router } from 'express';
 import { owner } from './auth.js';
 export function reportsRouter(db) {
   const router = Router();
+  router.get('/issues', async (req, res) => {
+    const issues = await db.issue.findMany({
+      where: {
+        status: 'open',
+        ...(req.user.role === 'staff' ? { order: { assigned_to: req.user.id } } : {}),
+      },
+      orderBy: { created_at: 'asc' },
+      take: 100,
+      select: {
+        id: true,
+        category: true,
+        message: true,
+        created_at: true,
+        order: { select: { id: true, number: true, customer: { select: { name: true } } } },
+      },
+    });
+    res.json({ issues });
+  });
   router.get('/staff', async (req, res) =>
     res.json({
       staff: await db.user.findMany({
-        where: { role: { in: ['staff', 'owner'] } },
+        where: { role: { in: ['staff', 'owner'] }, active: true },
         select: { id: true, name: true, role: true },
         orderBy: { name: 'asc' },
       }),
     }),
   );
   router.get('/summary', async (req, res) => {
-    const [groups, openIssues, garmentCount] = await Promise.all([
-      db.order.groupBy({ by: ['stage'], _count: { _all: true }, _sum: { total: true } }),
-      db.issue.count({ where: { status: 'open' } }),
-      db.garment.count({ where: { delivered: false } }),
+    const scope = req.user.role === 'owner' ? {} : { assigned_to: req.user.id };
+    const [groups, openIssues, garmentCount, openQueries] = await Promise.all([
+      db.order.groupBy({
+        where: scope,
+        by: ['stage'],
+        _count: { _all: true },
+        _sum: { total: true },
+      }),
+      db.issue.count({ where: { status: 'open', order: scope } }),
+      db.garment.count({ where: { delivered: false, order: scope } }),
+      db.ticket.count({
+        where: {
+          status: { not: 'resolved' },
+          ...(req.user.role === 'owner'
+            ? {}
+            : {
+                OR: [
+                  { requester_id: req.user.id },
+                  { assigned_to: req.user.id, requester_role: 'customer' },
+                ],
+              }),
+        },
+      }),
     ]);
     res.json({
       counts: groups.map((row) => ({
@@ -25,6 +62,7 @@ export function reportsRouter(db) {
       })),
       openIssues,
       garmentCount,
+      openQueries,
     });
   });
   router.get('/export', owner, async (req, res) => {

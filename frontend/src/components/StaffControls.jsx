@@ -3,8 +3,10 @@ import { View, Text, Pressable } from 'react-native';
 import { router } from 'expo-router';
 import { nextStage, STAGE_LABELS } from '@laundrytrack/shared';
 import { useResource } from '../lib/hooks';
+import { useSession } from '../lib/session';
 import { Button, Card, SectionTitle, Body, Field, Icon, colors, s } from './UI';
 export default function StaffControls({ order, act, busy, offline, pending = 0, onError }) {
+  const { user } = useSession();
   const { data } = useResource('/outlet/staff');
   const [type, setType] = useState('');
   const [color, setColor] = useState('');
@@ -19,28 +21,35 @@ export default function StaffControls({ order, act, busy, offline, pending = 0, 
     <Card>
       <SectionTitle>The next careful step.</SectionTitle>
       <Body>Assigned team member</Body>
-      <View
-        style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 7, marginTop: 8, marginBottom: 20 }}
-      >
-        {data?.staff.map((staff) => (
-          <Pressable
-            key={staff.id}
-            disabled={blocked}
-            accessibilityRole="button"
-            accessibilityState={{ selected: staff.id === order.assigned_to }}
-            onPress={() => act('assign', { staffId: staff.id })}
-            style={{
-              padding: 11,
-              borderRadius: 9,
-              borderWidth: 1,
-              borderColor: staff.id === order.assigned_to ? colors.green : colors.line,
-              backgroundColor: staff.id === order.assigned_to ? '#eaf2df' : 'white',
-            }}
-          >
-            <Text style={{ fontSize: 12, color: colors.green }}>{staff.name}</Text>
-          </Pressable>
-        ))}
-      </View>
+      {user.role === 'owner' ? (
+        <View
+          style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 7, marginTop: 8, marginBottom: 20 }}
+        >
+          {data?.staff.map((staff) => (
+            <Pressable
+              key={staff.id}
+              disabled={blocked}
+              accessibilityRole="button"
+              accessibilityState={{ selected: staff.id === order.assigned_to }}
+              onPress={() => act('assign', { staffId: staff.id })}
+              style={{
+                padding: 11,
+                borderRadius: 9,
+                borderWidth: 1,
+                borderColor: staff.id === order.assigned_to ? colors.green : colors.line,
+                backgroundColor: staff.id === order.assigned_to ? colors.mint : 'white',
+              }}
+            >
+              <Text style={{ fontSize: 12, color: colors.green }}>{staff.name}</Text>
+            </Pressable>
+          ))}
+        </View>
+      ) : (
+        <Body style={{ marginTop: 8, marginBottom: 20 }}>
+          {data?.staff.find((person) => person.id === order.assigned_to)?.name ||
+            'Awaiting owner assignment'}
+        </Body>
+      )}
       {order.stage === 'booked' && (
         <>
           <Field

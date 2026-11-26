@@ -12,60 +12,62 @@ export default function OrderCard({ order, staff }) {
     >
       <View style={s.row}>
         <View style={styles.icon}>
-          <Icon name="shirt-outline" size={26} />
+          <Icon name="bag-handle-outline" size={23} />
         </View>
-        <Badge stage={order.stage} />
+        <View style={{ flex: 1 }}>
+          <Text style={styles.number}>{order.number}</Text>
+          <Text style={styles.meta}>
+            {staff
+              ? order.customer_name
+              : `${order.expected_count} garments · ${order.garment_count} registered`}
+          </Text>
+        </View>
+        <Icon name="chevron-forward" size={18} color={colors.muted} />
       </View>
-      <Text style={styles.number}>{order.number}</Text>
-      <Text style={styles.meta}>
-        {staff
-          ? order.customer_name
-          : `${order.expected_count} garments · ${order.garment_count} registered`}
-      </Text>
-      <View style={styles.bottom}>
-        <View>
-          <Text style={styles.date}>Pickup {dateLabel(order.pickup_date + 'T12:00:00')}</Text>
-          <Text style={styles.meta}>{order.slot}</Text>
-        </View>
+      <View style={[s.row, { marginTop: 16 }]}>
+        <Badge stage={order.stage} />
         <Text style={styles.total}>{money(order.total)}</Text>
+      </View>
+      <View style={styles.bottom}>
+        <Icon name="calendar-outline" size={15} color={colors.muted} />
+        <Text style={styles.date}>
+          {dateLabel(order.pickup_date + 'T12:00:00')} · {order.slot}
+        </Text>
+        {staff && !order.assigned_to && <Text style={styles.unassigned}>Unassigned</Text>}
       </View>
     </Pressable>
   );
 }
 const styles = StyleSheet.create({
   card: {
-    padding: 20,
-    borderRadius: 17,
+    padding: 17,
+    borderRadius: 20,
     borderWidth: 1,
     borderColor: colors.line,
     backgroundColor: 'white',
-    marginBottom: 16,
+    marginBottom: 13,
   },
   icon: {
-    height: 45,
-    width: 45,
-    borderRadius: 12,
-    backgroundColor: '#edf2e4',
+    height: 43,
+    width: 43,
+    borderRadius: 14,
+    backgroundColor: colors.mint,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  number: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: colors.ink,
-    marginTop: 18,
-    letterSpacing: -0.4,
-  },
-  meta: { fontSize: 12, color: colors.muted, marginTop: 7 },
+  number: { fontSize: 15, fontWeight: '800', color: colors.ink, letterSpacing: -0.3 },
+  meta: { fontSize: 12, color: colors.muted, marginTop: 5 },
   bottom: {
     borderTopWidth: 1,
     borderTopColor: colors.line,
-    marginTop: 20,
-    paddingTop: 16,
+    marginTop: 15,
+    paddingTop: 13,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    gap: 7,
+    flexWrap: 'wrap',
   },
-  date: { fontSize: 13, color: '#687e56' },
-  total: { fontSize: 19, fontWeight: '600', color: colors.ink },
+  date: { fontSize: 11, color: colors.muted },
+  total: { fontSize: 18, fontWeight: '800', color: colors.green },
+  unassigned: { fontSize: 10, fontWeight: '600', color: '#B16A25', marginLeft: 'auto' },
 });

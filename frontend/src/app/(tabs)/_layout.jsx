@@ -12,31 +12,50 @@ export default function TabLayout() {
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: colors.green,
-        tabBarInactiveTintColor: '#98a38d',
-        tabBarStyle: { backgroundColor: 'white', borderTopColor: '#e2e8d8' },
-        tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
+        tabBarInactiveTintColor: '#8497A4',
+        tabBarStyle: { backgroundColor: 'white', borderTopColor: colors.line, paddingTop: 8 },
+        tabBarLabelStyle: { fontSize: 10, fontWeight: '700' },
       }}
     >
       <Tabs.Screen
         name="home"
         options={{
-          title: 'Overview',
-          tabBarIcon: ({ color }) => <Icon name="grid-outline" color={color} />,
+          title: staff ? 'Dashboard' : 'Home',
+          tabBarIcon: ({ color, focused }) => (
+            <Icon name={focused ? 'home' : 'home-outline'} color={color} />
+          ),
         }}
       />
       <Tabs.Screen
         name="orders"
         options={{
-          title: staff ? 'Workspace' : 'My orders',
-          tabBarIcon: ({ color }) => <Icon name="bag-handle-outline" color={color} />,
+          title: staff ? 'Requests' : 'My orders',
+          tabBarIcon: ({ color, focused }) => (
+            <Icon name={focused ? 'bag-handle' : 'bag-handle-outline'} color={color} />
+          ),
         }}
       />
       <Tabs.Screen
         name="book"
         options={{
           title: 'Book pickup',
-          href: staff ? null : undefined,
+          href: user.role === 'owner' ? null : undefined,
           tabBarIcon: ({ color }) => <Icon name="add-circle-outline" color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="manage"
+        options={{
+          title: 'Manage',
+          href: user.role === 'owner' ? undefined : null,
+          tabBarIcon: ({ color }) => <Icon name="people-outline" color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="support"
+        options={{
+          title: 'Support',
+          tabBarIcon: ({ color }) => <Icon name="chatbubbles-outline" color={color} />,
         }}
       />
       <Tabs.Screen

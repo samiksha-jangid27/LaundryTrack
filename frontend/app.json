@@ -17,9 +17,8 @@
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#15584e",
+        "backgroundColor": "#007F75",
         "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "package": "com.samikshajangid.laundrytrack",
@@ -30,7 +29,6 @@
         "android.permission.RECORD_AUDIO",
         "android.permission.USE_BIOMETRIC",
         "android.permission.USE_FINGERPRINT",
-        "android.permission.VIBRATE",
         "android.permission.READ_MEDIA_IMAGES",
         "android.permission.READ_MEDIA_VIDEO",
         "android.permission.READ_MEDIA_AUDIO"
@@ -50,6 +48,6 @@
       "expo-build-properties"
     ],
     "scheme": "laundrytrack",
-    "backgroundColor": "#f5f7f1"
+    "backgroundColor": "#F4F7FB"
   }
 }

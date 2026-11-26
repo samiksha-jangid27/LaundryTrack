@@ -4,19 +4,28 @@ import { transaction } from './db.js';
 import { getCatalog } from './catalog.js';
 import { HttpError, requireValue } from './errors.js';
 import { digest } from './auth.js';
+import { notifyOrder } from './notifications.js';
 export const now = () => new Date();
 
-export const event = (db, orderId, actor, kind, description) =>
-  db.event.create({
+export async function event(db, orderId, actor, kind, description) {
+  const entry = await db.event.create({
     data: { order_id: orderId, actor_id: actor.id, kind, description },
   });
+  await notifyOrder(db, entry, actor);
+  return entry;
+}
 
 export async function accessibleOrder(db, id, user) {
   const order = await db.order.findUnique({
     where: { id },
     include: { customer: { select: { name: true } } },
   });
-  if (!order || (user.role === 'customer' && order.customer_id !== user.id))
+  if (
+    !order ||
+    (user.role !== 'owner' &&
+      order.customer_id !== user.id &&
+      !(user.role === 'staff' && order.assigned_to === user.id))
+  )
     throw new HttpError(404, 'Order not found');
   const { customer, ...row } = order;
   return { ...row, customer_name: customer.name };
@@ -47,6 +56,12 @@ export async function createOrder(db, user, body) {
   const input = bookingSchema.parse(body);
   const requestHash = digest(JSON.stringify(input));
   return transaction(db, async (tx) => {
+    const actor = await tx.user.findUnique({ where: { id: user.id } });
+    requireValue(
+      actor?.active && actor.role === user.role,
+      'Your account changed. Please sign in again.',
+      401,
+    );
     if (input.requestId) {
       const replay = await tx.bookingRequest.findUnique({ where: { request_id: input.requestId } });
       if (replay) {
@@ -129,6 +144,18 @@ export function mutateOrder(db, id, user, kind, body, operation) {
   const { eventId, version } = actionSchema.parse(body);
   return transaction(db, async (tx) => {
     const order = await accessibleOrder(tx, id, user);
+    const actor = await tx.user.findUnique({ where: { id: user.id } });
+    requireValue(
+      actor?.active && actor.role === user.role,
+      'Your account changed. Please sign in again.',
+      401,
+    );
+    if (!['issue', 'delivery-code', 'cancel'].includes(kind))
+      requireValue(
+        user.role === 'owner' || (user.role === 'staff' && order.assigned_to === user.id),
+        'This work is not assigned to your account.',
+        403,
+      );
     const replay = await tx.action.findUnique({ where: { event_id: eventId } });
     if (replay) {
       requireValue(

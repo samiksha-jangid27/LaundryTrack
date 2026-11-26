@@ -1,12 +1,15 @@
 import express from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
-import { authRouter, authenticate, operator } from './auth.js';
+import { authRouter, authenticate, operator, owner } from './auth.js';
+import { managementRouter } from './management.js';
+import { supportRouter } from './support.js';
+import { notificationsRouter } from './notifications.js';
 import { orderRouter } from './order-routes.js';
 import { reportsRouter } from './reports.js';
 import { getCatalog } from './catalog.js';
 import { errorHandler } from './errors.js';
-export function createApp(db) {
+export function createApp(db, identityServices) {
   const app = express();
   app.disable('x-powered-by');
   // Set only to the hop count of a trusted reverse proxy when hosting the API.
@@ -33,9 +36,12 @@ export function createApp(db) {
     res.json({ status: 'ok', version: '1.0.0' });
   });
   app.get('/api/services', async (req, res) => res.json({ services: await getCatalog(db) }));
-  app.use('/api/auth', authRouter(db));
+  app.use('/api/auth', authRouter(db, identityServices));
   app.use('/api/orders', authenticate(db), orderRouter(db));
   app.use('/api/outlet', authenticate(db), operator, reportsRouter(db));
+  app.use('/api/management', authenticate(db), owner, managementRouter(db));
+  app.use('/api/support', authenticate(db), supportRouter(db));
+  app.use('/api/notifications', authenticate(db), notificationsRouter(db));
   app.use('/api', (req, res) => res.status(404).json({ error: 'Endpoint not found' }));
   app.use((req, res) => res.status(404).json({ error: 'Endpoint not found' }));
   app.use(errorHandler);

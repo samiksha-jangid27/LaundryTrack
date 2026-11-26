@@ -11,11 +11,16 @@ test('customer issues retain outlet resolution and audit history', async (t) => 
     f.customer,
   );
   assert.equal(order.issues.length, 1);
+  assert.equal((await f.customer('/outlet/issues')).status, 403);
+  const queue = await f.staff('/outlet/issues');
+  assert.equal(queue.data.issues[0].order.id, order.id);
+  assert.equal(queue.data.issues[0].order.customer.name, 'customer');
   order = await f.mutate(order, `issues/${order.issues[0].id}/resolve`, {
     resolution: 'Explained the item pricing on the booking receipt.',
   });
   assert.equal(order.issues[0].status, 'resolved');
   assert.ok(order.events.some((e) => e.kind === 'resolved'));
+  assert.equal((await f.staff('/outlet/issues')).data.issues.length, 0);
 });
 test('cancellation is only allowed before accepting custody', async (t) => {
   const f = await fixture(t);

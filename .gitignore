@@ -17,3 +17,8 @@ frontend/android/
 *.ipa
 
 backend/generated/
+# Expo may generate this while serving the JavaScript app; checks use root jsconfig.json.
+frontend/tsconfig.json
+google-services.json
+GoogleService-Info.plist
+*firebase-adminsdk*.json

@@ -1,6 +1,6 @@
 import { useState, useRef, useMemo } from 'react';
 import { View, Text, Pressable } from 'react-native';
-import { Stack, useLocalSearchParams, Redirect } from 'expo-router';
+import { Stack, useLocalSearchParams, Redirect, router } from 'expo-router';
 import * as Crypto from 'expo-crypto';
 import { STAGES, STAGE_LABELS, money, canOperate, dateLabel } from '@laundrytrack/shared';
 import { useResource } from '../../lib/hooks';
@@ -30,10 +30,10 @@ import OrderIssues from '../../components/OrderIssues';
 export default function OrderDetail() {
   const { id } = useLocalSearchParams();
   const { user, loading: sessionLoading } = useSession();
-  const staff = canOperate(user);
   const { data, setData, error, loading, offline, refreshing, reload } = useResource(
     `/orders/${id}`,
   );
+  const staff = canOperate(user) && data?.order?.customer_id !== user?.id;
   const { data: estimate } = useResource(`/orders/${id}/estimate`);
   const [failure, setFailure] = useState(null);
   const [message, setMessage] = useState('');
@@ -323,8 +323,19 @@ export default function OrderDetail() {
           </Text>
         </Card>
       )}
+      <Button
+        title="Ask the owner about this order"
+        variant="secondary"
+        icon="chatbubbles-outline"
+        onPress={() =>
+          router.push({
+            pathname: '/(tabs)/support',
+            params: { orderId: order.id, orderNumber: order.number },
+          })
+        }
+      />
       <OrderIssues order={order} staff={staff} act={act} busy={busy || offline} />
-      {!staff && order.stage === 'booked' && (
+      {(!staff || user.role === 'owner') && order.stage === 'booked' && (
         <Button
           busy={busy}
           disabled={offline}

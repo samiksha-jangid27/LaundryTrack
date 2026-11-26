@@ -94,10 +94,16 @@ test('corrupt or incomplete saved sessions are rejected without crashing startup
     assert.equal(readSavedSession(value), null);
   const session = {
     token: 'token',
-    user: { id: 'customer', name: 'Name', role: 'customer' },
+    user: { id: 'customer', name: 'Name', role: 'customer', emailVerified: true },
     expiresAt: new Date(Date.now() + 10000).toISOString(),
   };
   assert.deepEqual(readSavedSession(JSON.stringify(session)), session);
+  assert.equal(
+    readSavedSession(
+      JSON.stringify({ ...session, user: { ...session.user, emailVerified: false } }),
+    ),
+    null,
+  );
 });
 
 test('uncertain action retries retain the original ID and expected version', () => {

@@ -1,154 +1,490 @@
-import { useState } from 'react';
-import { View, Text, Pressable, StyleSheet } from 'react-native';
-import { Redirect } from 'expo-router';
-import { useSession } from '../lib/session';
+import { useEffect, useState } from 'react';
 import {
-  Screen,
-  Heading,
-  Card,
-  Button,
-  Field,
-  Feedback,
-  Loading,
-  Icon,
-  colors,
-} from '../components/UI';
+  View,
+  Text,
+  Pressable,
+  StyleSheet,
+  Keyboard,
+  KeyboardAvoidingView,
+  Platform,
+  useWindowDimensions,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { StatusBar } from 'expo-status-bar';
+import { Redirect } from 'expo-router';
+import { registerSchema, loginSchema } from '@laundrytrack/shared';
+import { useSession } from '../lib/session';
+import { Brand, Button, Field, Icon, colors } from '../components/UI';
+import LaunchScreen from '../components/LaunchScreen';
+
 export default function SignIn() {
-  const { user, loading, login, notice, storageError } = useSession();
-  const [register, setRegister] = useState(false);
-  const [name, setName] = useState('');
-  const [phone, setPhone] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const { user, loading, login, verifyEmail, resendCode, googleLogin, notice, storageError } =
+    useSession();
+  const { height, fontScale } = useWindowDimensions();
+  const [mode, setMode] = useState('login');
+  const [step, setStep] = useState(0);
+  const [form, setForm] = useState({ name: '', phone: '', email: '', password: '' });
+  const [verification, setVerification] = useState(null);
+  const [code, setCode] = useState('');
+  const [visible, setVisible] = useState(false);
+  const [keyboard, setKeyboard] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState(null);
-  if (loading) return <Loading />;
+  const [error, setError] = useState('');
+  const [message, setMessage] = useState('');
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    const show = Keyboard.addListener('keyboardDidShow', () => setKeyboard(true));
+    const hide = Keyboard.addListener('keyboardDidHide', () => setKeyboard(false));
+    return () => {
+      show.remove();
+      hide.remove();
+    };
+  }, []);
+  useEffect(() => {
+    if (!verification) return;
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, [verification]);
+  const compact = keyboard || height < 720 || fontScale > 1.2;
+  const register = mode === 'register';
+  const profile = register && step === 1 && !verification;
+  const remaining = verification
+    ? Math.max(0, Math.ceil((Date.parse(verification.resendAt) - now) / 1000))
+    : 0;
+  if (loading) return <LaunchScreen />;
   if (user) return <Redirect href="/(tabs)/home" />;
+  const update = (key) => (value) => setForm((old) => ({ ...old, [key]: value }));
+  function changeMode(value) {
+    if (busy) return;
+    setMode(value);
+    setStep(0);
+    setVerification(null);
+    setCode('');
+    setError('');
+    setMessage('');
+  }
   async function submit() {
+    if (busy) return;
+    setError('');
+    setMessage('');
+    if (register && step === 0 && !verification) {
+      const result = loginSchema
+        .extend({ password: registerSchema.shape.password })
+        .safeParse(form);
+      if (!result.success) {
+        setError(result.error.issues[0].message);
+        Keyboard.dismiss();
+        return;
+      }
+      Keyboard.dismiss();
+      setStep(1);
+      return;
+    }
     setBusy(true);
-    setError(null);
+    Keyboard.dismiss();
     try {
-      await login({ name, phone, email, password }, register);
+      if (verification) {
+        if (!/^\d{6}$/.test(code)) throw new Error('Enter the six-digit code from your email.');
+        await verifyEmail(verification.id, code);
+      } else {
+        const parsed = (register ? registerSchema : loginSchema).safeParse(form);
+        if (!parsed.success) throw new Error(parsed.error.issues[0].message);
+        const result = await login(parsed.data, register);
+        if (result.verification) {
+          setVerification(result.verification);
+          setNow(Date.now());
+          Keyboard.dismiss();
+        }
+      }
     } catch (e) {
-      setError(e);
+      setError(e.message);
+      Keyboard.dismiss();
     } finally {
       setBusy(false);
     }
   }
+  const title = verification
+    ? 'Check your inbox'
+    : profile
+      ? 'A little about you'
+      : register
+        ? 'Your fresh start'
+        : 'Welcome back';
+  const subtitle = verification
+    ? `Enter the code sent to ${verification.email}`
+    : profile
+      ? 'Your name and number help us find your doorstep.'
+      : 'Fresh laundry. More time for you.';
   return (
-    <Screen>
-      <View style={styles.brand}>
-        <View style={styles.logo}>
-          <Icon name="shirt-outline" color={colors.lime} size={24} />
-        </View>
-        <Text style={styles.brandText}>
-          Laundry<Text style={{ fontWeight: '400' }}>Track</Text>
-        </Text>
-      </View>
-      <View style={styles.intro}>
-        <View style={styles.orbit}>
-          <Icon name="shirt-outline" color="#568a5f" size={68} />
-          <View style={styles.smallTag}>
-            <Icon name="checkmark-circle" size={20} />
-            <Text style={{ color: colors.green, fontSize: 11, fontWeight: '600' }}>
-              Every piece matters
-            </Text>
+    <SafeAreaView style={styles.page} edges={['top', 'bottom']}>
+      <StatusBar style="light" />
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
+        {!keyboard && (
+          <View style={[styles.hero, compact && styles.heroCompact]}>
+            <Brand light small={compact} />
+            {!compact && (
+              <>
+                <View style={styles.heroArt}>
+                  <View style={styles.shirt}>
+                    <Icon name="shirt-outline" size={56} color={colors.green} />
+                  </View>
+                  <View style={styles.spark}>
+                    <Icon name="sparkles" size={20} color="white" />
+                  </View>
+                  <View style={styles.pickupTag}>
+                    <Icon name="bicycle-outline" size={18} />
+                    <Text style={styles.pickupText}>Doorstep pickup</Text>
+                  </View>
+                </View>
+                <Text style={styles.heroText}>Less laundry.{'\n'}More life.</Text>
+              </>
+            )}
           </View>
-        </View>
-        <Heading
-          eyebrow="A little care. A lighter day."
-          title={register ? 'Your fresh start.' : 'Fresh clothes.\nA lighter mind.'}
-          subtitle="Doorstep laundry with a clear trail for every garment."
-        />
-      </View>
-      <Card>
-        <Heading title={register ? 'Create your account' : 'Welcome back.'} />
-        <Feedback error={error || storageError} message={notice} />
-        {register && (
-          <>
-            <Field
-              label="Your name"
-              value={name}
-              onChangeText={setName}
-              autoComplete="name"
-              maxLength={80}
-            />
-            <Field
-              label="Mobile number"
-              value={phone}
-              onChangeText={setPhone}
-              keyboardType="phone-pad"
-              maxLength={10}
-            />
-          </>
         )}
-        <Field
-          label="Email address"
-          value={email}
-          onChangeText={setEmail}
-          keyboardType="email-address"
-          autoCapitalize="none"
-          autoComplete="email"
-          maxLength={254}
-        />
-        <Field
-          label={register ? 'Password · 10+ characters' : 'Password'}
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-          autoCapitalize="none"
-          maxLength={128}
-        />
-        <Button
-          title={register ? 'Create account' : 'Sign in'}
-          busy={busy}
-          onPress={() => submit()}
-        />
-        <Pressable
-          accessibilityRole="button"
-          onPress={() => {
-            setRegister(!register);
-            setError(null);
-          }}
-          style={{ padding: 18 }}
+        <View
+          style={[
+            styles.panel,
+            compact && { paddingTop: 16, paddingBottom: 12 },
+            keyboard && { flex: 1, justifyContent: 'flex-start', paddingTop: 8, paddingBottom: 8 },
+          ]}
         >
-          <Text style={{ textAlign: 'center', fontSize: 13, color: colors.green }}>
-            {register ? 'Already have an account? Sign in' : 'New here? Create an account'}
-          </Text>
-        </Pressable>
-      </Card>
-    </Screen>
+          {!verification && !keyboard && (
+            <View style={styles.tabs}>
+              {[
+                ['login', 'Sign in'],
+                ['register', 'Create account'],
+              ].map(([value, label]) => (
+                <Pressable
+                  key={value}
+                  accessibilityRole="tab"
+                  accessibilityState={{ selected: mode === value }}
+                  disabled={busy}
+                  onPress={() => changeMode(value)}
+                  style={[styles.tab, mode === value && styles.tabActive]}
+                >
+                  <Text style={[styles.tabText, mode === value && { color: colors.green }]}>
+                    {label}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          )}
+          <View style={[styles.formHeading, compact && { marginTop: 6, marginBottom: 8 }]}>
+            <View style={{ flex: 1 }}>
+              <Text accessibilityRole="header" style={[styles.title, compact && { fontSize: 22 }]}>
+                {title}
+              </Text>
+              {!keyboard && <Text style={styles.subtitle}>{subtitle}</Text>}
+            </View>
+            {(profile || verification) && (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Back"
+                disabled={busy}
+                onPress={() => {
+                  setVerification(null);
+                  setStep(0);
+                  setCode('');
+                  setError('');
+                }}
+                style={styles.back}
+              >
+                <Icon name="arrow-back" size={20} />
+              </Pressable>
+            )}
+          </View>
+          {verification ? (
+            <Field
+              compact
+              label="Verification code"
+              icon="shield-checkmark-outline"
+              value={code}
+              onChangeText={(value) => setCode(value.replace(/\D/g, '').slice(0, 6))}
+              keyboardType="number-pad"
+              autoComplete="one-time-code"
+              textContentType="oneTimeCode"
+              placeholder="6-digit code"
+              maxLength={6}
+              returnKeyType="done"
+              onSubmitEditing={submit}
+            />
+          ) : profile ? (
+            <>
+              <Field
+                compact
+                label="Full name"
+                icon="person-outline"
+                value={form.name}
+                onChangeText={update('name')}
+                placeholder="Your name"
+                autoComplete="name"
+                maxLength={80}
+              />
+              <Field
+                compact
+                label="Mobile number"
+                icon="call-outline"
+                value={form.phone}
+                onChangeText={update('phone')}
+                placeholder="10-digit mobile number"
+                keyboardType="phone-pad"
+                autoComplete="tel"
+                maxLength={10}
+                onSubmitEditing={submit}
+              />
+            </>
+          ) : (
+            <>
+              <Field
+                compact
+                label="Email address"
+                icon="mail-outline"
+                value={form.email}
+                onChangeText={update('email')}
+                placeholder="you@example.com"
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
+                autoComplete="email"
+                maxLength={254}
+              />
+              <Field
+                compact
+                label={register ? 'Password · 10+ characters' : 'Password'}
+                icon="lock-closed-outline"
+                value={form.password}
+                onChangeText={update('password')}
+                placeholder="Your password"
+                secureTextEntry={!visible}
+                autoCapitalize="none"
+                autoComplete={register ? 'new-password' : 'current-password'}
+                maxLength={128}
+                returnKeyType="done"
+                onSubmitEditing={submit}
+                trailing={
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={visible ? 'Hide password' : 'Show password'}
+                    onPress={() => setVisible(!visible)}
+                    hitSlop={8}
+                    style={{ padding: 12 }}
+                  >
+                    <Icon
+                      name={visible ? 'eye-off-outline' : 'eye-outline'}
+                      size={20}
+                      color={colors.muted}
+                    />
+                  </Pressable>
+                }
+              />
+            </>
+          )}
+          {(error || storageError || message || notice) && (
+            <Text
+              accessibilityLiveRegion="polite"
+              style={[styles.feedback, (error || storageError) && { color: '#B54735' }]}
+            >
+              {error || storageError?.message || message || notice}
+            </Text>
+          )}
+          <Button
+            title={
+              verification
+                ? 'Verify & continue'
+                : profile
+                  ? 'Send verification code'
+                  : register
+                    ? 'Continue'
+                    : 'Sign in'
+            }
+            busy={busy}
+            icon="arrow-forward"
+            onPress={submit}
+            style={{ marginTop: 2, minHeight: compact ? 46 : 50 }}
+          />
+          {verification ? (
+            <Pressable
+              accessibilityRole="button"
+              disabled={busy || remaining > 0}
+              onPress={async () => {
+                setBusy(true);
+                setError('');
+                try {
+                  const result = await resendCode(verification.id);
+                  setVerification(result.verification);
+                  setNow(Date.now());
+                  setMessage('A new code has been sent.');
+                  setCode('');
+                } catch (e) {
+                  setError(e.message);
+                } finally {
+                  setBusy(false);
+                }
+              }}
+              style={styles.resend}
+            >
+              <Text
+                style={{
+                  color: remaining ? colors.muted : colors.green,
+                  fontSize: 13,
+                  fontWeight: '600',
+                }}
+              >
+                {remaining ? `Resend code in ${remaining}s` : 'Resend code'}
+              </Text>
+            </Pressable>
+          ) : (
+            !profile &&
+            !keyboard && (
+              <>
+                <View style={[styles.or, compact && { marginVertical: 10 }]}>
+                  <View style={styles.line} />
+                  <Text style={styles.orText}>or continue with</Text>
+                  <View style={styles.line} />
+                </View>
+                <Button
+                  title="Google"
+                  variant="secondary"
+                  icon="logo-google"
+                  disabled={busy}
+                  style={{ marginTop: 0, minHeight: compact ? 44 : 48 }}
+                  onPress={async () => {
+                    setBusy(true);
+                    setError('');
+                    try {
+                      const result = await googleLogin();
+                      if (result?.verification) {
+                        setVerification(result.verification);
+                        setNow(Date.now());
+                        Keyboard.dismiss();
+                      }
+                    } catch (e) {
+                      setError(e.message);
+                    } finally {
+                      setBusy(false);
+                    }
+                  }}
+                />
+              </>
+            )
+          )}
+          {!compact && (
+            <View style={styles.trust}>
+              <Icon name="shield-checkmark-outline" size={15} />
+              <Text style={styles.trustText}>
+                Verified accounts. Tracked garments. Clear prices.
+              </Text>
+            </View>
+          )}
+        </View>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 const styles = StyleSheet.create({
-  brand: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 15 },
-  logo: {
-    width: 42,
-    height: 44,
-    borderRadius: 13,
-    backgroundColor: colors.green,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  brandText: { fontSize: 23, fontWeight: '700', letterSpacing: -1, color: colors.ink },
-  intro: { marginTop: 25 },
-  orbit: {
-    height: 135,
-    backgroundColor: '#e7efdc',
-    borderRadius: 23,
-    alignItems: 'center',
-    justifyContent: 'center',
+  page: { flex: 1, backgroundColor: colors.green },
+  hero: {
+    flex: 1,
+    minHeight: 150,
+    padding: 24,
+    paddingTop: 20,
     overflow: 'hidden',
+    justifyContent: 'space-between',
   },
-  smallTag: {
+  heroCompact: {
+    minHeight: 70,
+    paddingHorizontal: 22,
+    paddingVertical: 12,
+    justifyContent: 'center',
+  },
+  heroText: {
+    color: 'white',
+    fontSize: 31,
+    lineHeight: 35,
+    fontWeight: '800',
+    letterSpacing: -0.9,
+    marginTop: 18,
+  },
+  heroArt: { position: 'absolute', right: 30, bottom: 35, alignItems: 'center' },
+  shirt: {
+    width: 106,
+    height: 112,
+    borderRadius: 32,
+    backgroundColor: colors.lime,
+    alignItems: 'center',
+    justifyContent: 'center',
+    transform: [{ rotate: '-10deg' }],
+  },
+  spark: {
     position: 'absolute',
-    bottom: 12,
-    right: 18,
-    backgroundColor: 'white',
-    borderRadius: 10,
-    padding: 9,
+    right: -12,
+    top: -13,
+    width: 37,
+    height: 37,
+    borderRadius: 14,
+    backgroundColor: colors.coral,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pickupTag: {
     flexDirection: 'row',
-    gap: 7,
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: 'white',
+    padding: 8,
+    borderRadius: 12,
+    marginTop: -8,
+  },
+  pickupText: { fontSize: 10, fontWeight: '700', color: colors.green },
+  panel: {
+    backgroundColor: 'white',
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    padding: 24,
+    paddingBottom: 24,
+  },
+  tabs: { flexDirection: 'row', padding: 4, borderRadius: 15, backgroundColor: colors.bg },
+  tab: { flex: 1, minHeight: 36, justifyContent: 'center', alignItems: 'center', borderRadius: 12 },
+  tabActive: {
+    backgroundColor: 'white',
+    elevation: 1,
+    shadowColor: '#12313E',
+    shadowOpacity: 0.05,
+    shadowRadius: 5,
+    shadowOffset: { width: 0, height: 2 },
+  },
+  tabText: { fontSize: 13, fontWeight: '700', color: colors.muted },
+  formHeading: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginTop: 22,
+    marginBottom: 18,
+  },
+  title: { color: colors.ink, fontSize: 26, fontWeight: '800', letterSpacing: -0.7 },
+  subtitle: { color: colors.muted, fontSize: 13, lineHeight: 19, marginTop: 5 },
+  back: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    backgroundColor: colors.mint,
+    justifyContent: 'center',
     alignItems: 'center',
   },
+  feedback: { fontSize: 12, lineHeight: 17, color: colors.green, marginBottom: 10 },
+  or: { flexDirection: 'row', alignItems: 'center', gap: 10, marginVertical: 17 },
+  line: { flex: 1, height: 1, backgroundColor: colors.line },
+  orText: { fontSize: 11, color: colors.muted },
+  trust: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    marginTop: 20,
+  },
+  trustText: { fontSize: 10, color: colors.muted },
+  resend: { padding: 14, alignItems: 'center' },
 });

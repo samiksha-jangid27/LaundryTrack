@@ -1,7 +1,9 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { api, secret, setToken, onUnauthorized } from './api';
 import { clearLocal, listPending } from './storage';
 import { readSavedSession } from './session-state';
+import { getGoogleIdToken } from './google';
+import { unregisterPushDevice } from './push';
 const Context = createContext(null);
 export function SessionProvider({ children }) {
   const [user, setUser] = useState(null);
@@ -55,11 +57,11 @@ export function SessionProvider({ children }) {
       onUnauthorized(null);
     };
   }, []);
-  async function login(input, register = false) {
-    const result = await api(`/auth/${register ? 'register' : 'login'}`, {
-      method: 'POST',
-      body: input,
-    });
+  async function saveSession(result) {
+    if (result.user?.role === 'customer' && result.user.emailVerified !== true)
+      throw new Error(
+        'Email verification is required. Please try again after the service is updated.',
+      );
     try {
       await secret.set(
         'laundrytrack.session',
@@ -67,9 +69,7 @@ export function SessionProvider({ children }) {
       );
     } catch {
       throw new Error(
-        register
-          ? 'Your account was created, but the phone could not securely save the session. Restart the app and sign in.'
-          : 'The phone could not securely save your session. Restart the app and try signing in again.',
+        'The phone could not securely save your session. Restart the app and try signing in again.',
       );
     }
     setToken(result.token);
@@ -77,9 +77,59 @@ export function SessionProvider({ children }) {
     setNotice('');
     setStorageError(null);
   }
+  async function login(input, register = false) {
+    const result = await api(`/auth/${register ? 'register' : 'login'}`, {
+      method: 'POST',
+      body: input,
+    });
+    if (!result.verification) await saveSession(result);
+    return result;
+  }
+  async function verifyEmail(verificationId, code) {
+    const result = await api('/auth/verify-email', {
+      method: 'POST',
+      body: { verificationId, code },
+    });
+    await saveSession(result);
+  }
+  async function resendCode(verificationId) {
+    return api('/auth/resend-code', { method: 'POST', body: { verificationId } });
+  }
+  async function googleLogin() {
+    const idToken = await getGoogleIdToken();
+    if (!idToken) return;
+    const result = await api('/auth/google', { method: 'POST', body: { idToken } });
+    if (!result.verification) await saveSession(result);
+    return result;
+  }
+  async function linkGoogle() {
+    const idToken = await getGoogleIdToken();
+    if (!idToken) return false;
+    const result = await api('/auth/google/link', { method: 'POST', body: { idToken } });
+    await updateUser(result.user);
+    return true;
+  }
+  const updateUser = useCallback(async (next) => {
+    const saved = readSavedSession(await secret.get('laundrytrack.session'));
+    if (saved) await secret.set('laundrytrack.session', JSON.stringify({ ...saved, user: next }));
+    setUser(next);
+  }, []);
+  const refreshProfile = useCallback(async () => {
+    const result = await api('/auth/me');
+    await updateUser(result.user);
+  }, [updateUser]);
+  async function updateProfile(input) {
+    const result = await api('/auth/profile', { method: 'PATCH', body: input });
+    await updateUser(result.user);
+  }
+  async function requestStaffAccess() {
+    const result = await api('/auth/staff-request', { method: 'POST' });
+    await updateUser(result.user);
+  }
   async function logout() {
     if (user && listPending(user.id).length)
       throw new Error('Sync or discard the saved scans before signing out.');
+    await unregisterPushDevice().catch(() => {});
     try {
       await api('/auth/logout', { method: 'POST' });
     } catch (e) {
@@ -92,7 +142,23 @@ export function SessionProvider({ children }) {
     setNotice('');
   }
   return (
-    <Context.Provider value={{ user, loading, login, logout, notice, storageError }}>
+    <Context.Provider
+      value={{
+        user,
+        loading,
+        login,
+        logout,
+        verifyEmail,
+        resendCode,
+        googleLogin,
+        linkGoogle,
+        updateProfile,
+        requestStaffAccess,
+        refreshProfile,
+        notice,
+        storageError,
+      }}
+    >
       {children}
     </Context.Provider>
   );

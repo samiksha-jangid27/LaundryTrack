@@ -30,7 +30,7 @@ export default function OrderIssues({ order, staff, act, busy }) {
                 style={{
                   padding: 10,
                   borderRadius: 8,
-                  backgroundColor: category === value ? colors.green : '#edf3e5',
+                  backgroundColor: category === value ? colors.green : colors.mint,
                 }}
               >
                 <Text style={{ fontSize: 12, color: category === value ? 'white' : colors.green }}>
@@ -71,7 +71,7 @@ export default function OrderIssues({ order, staff, act, busy }) {
           </View>
           <Body style={{ marginVertical: 12, color: colors.ink }}>{issue.message}</Body>
           {issue.resolution && (
-            <View style={{ padding: 14, backgroundColor: '#f0f5e7', borderRadius: 10 }}>
+            <View style={{ padding: 14, backgroundColor: colors.mint, borderRadius: 10 }}>
               <Body>{issue.resolution}</Body>
             </View>
           )}

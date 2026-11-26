@@ -14,12 +14,15 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { STAGE_LABELS } from '@laundrytrack/shared';
 export const colors = {
-  ink: '#213e35',
-  green: '#15584e',
-  muted: '#63735d',
-  lime: '#d7eda8',
-  bg: '#f5f7f1',
-  line: '#e0e6d9',
+  ink: '#132C3A',
+  green: '#007F75',
+  muted: '#667987',
+  lime: '#D4F87A',
+  bg: '#F4F7FB',
+  line: '#E3EAF0',
+  mint: '#E0F6F1',
+  coral: '#FF765D',
+  purple: '#7861D6',
 };
 export function Icon({ name, size = 22, color = colors.green }) {
   return (
@@ -33,15 +36,49 @@ export function Icon({ name, size = 22, color = colors.green }) {
     />
   );
 }
+export function Brand({ light = false, small = false }) {
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+      <View
+        style={{
+          width: small ? 36 : 44,
+          height: small ? 36 : 44,
+          borderRadius: 14,
+          backgroundColor: light ? colors.lime : colors.green,
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <Icon
+          name="shirt-outline"
+          size={small ? 21 : 26}
+          color={light ? colors.green : colors.lime}
+        />
+      </View>
+      <Text
+        style={{
+          fontSize: small ? 21 : 25,
+          fontWeight: '800',
+          letterSpacing: -0.8,
+          color: light ? 'white' : colors.ink,
+        }}
+      >
+        Laundry<Text style={{ fontWeight: '400' }}>Track</Text>
+      </Text>
+    </View>
+  );
+}
 export function Screen({ children, refreshing = false, onRefresh, edges = ['top'], style }) {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }} edges={edges}>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         <ScrollView
           keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+          showsVerticalScrollIndicator={false}
           contentContainerStyle={[s.screen, style]}
           refreshControl={
             onRefresh ? (
@@ -49,6 +86,7 @@ export function Screen({ children, refreshing = false, onRefresh, edges = ['top'
                 refreshing={refreshing}
                 onRefresh={onRefresh}
                 tintColor={colors.green}
+                colors={[colors.green]}
               />
             ) : undefined
           }
@@ -95,8 +133,8 @@ export function Button({ title, onPress, busy, disabled, variant, icon, style })
       style={({ pressed }) => [
         s.button,
         alt && s.secondary,
-        pressed && { opacity: 0.8 },
-        (disabled || busy) && { opacity: 0.5 },
+        pressed && { opacity: 0.82 },
+        (disabled || busy) && { opacity: 0.55 },
         style,
       ]}
     >
@@ -109,34 +147,75 @@ export function Button({ title, onPress, busy, disabled, variant, icon, style })
     </Pressable>
   );
 }
-export function Field({ label, error, ...props }) {
+export function Field({ label, error, icon, trailing, compact = false, style, ...props }) {
   return (
-    <View style={{ marginBottom: 18 }}>
-      <Text style={s.label}>{label}</Text>
-      <TextInput
-        accessibilityLabel={label}
-        placeholderTextColor="#9ba68e"
-        style={[s.input, props.multiline && { height: 90, textAlignVertical: 'top' }]}
-        {...props}
-      />
-      {error && <Text style={{ color: '#a33d2d', marginTop: 7 }}>{error}</Text>}
+    <View style={{ marginBottom: compact ? 12 : 18 }}>
+      <Text style={[s.label, compact && { marginBottom: 6, fontSize: 12 }]}>{label}</Text>
+      <View
+        style={[
+          s.inputWrap,
+          compact && { minHeight: 46 },
+          props.multiline && { alignItems: 'flex-start' },
+        ]}
+      >
+        {icon && (
+          <View style={{ marginLeft: 13 }}>
+            <Icon name={icon} size={19} color={colors.muted} />
+          </View>
+        )}
+        <TextInput
+          accessibilityLabel={label}
+          placeholderTextColor="#91A2AE"
+          style={[
+            s.input,
+            compact && { minHeight: 44, paddingVertical: 10 },
+            props.multiline && { height: 90, textAlignVertical: 'top' },
+            style,
+          ]}
+          {...props}
+        />
+        {trailing}
+      </View>
+      {error && <Text style={{ color: '#B54735', fontSize: 12, marginTop: 5 }}>{error}</Text>}
     </View>
   );
 }
-export function Badge({ stage }) {
+export function Chip({ children, selected, onPress, icon, style }) {
   return (
-    <View
-      style={[s.badge, ['ready', 'delivered'].includes(stage) && { backgroundColor: '#e4efdc' }]}
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ selected: !!selected }}
+      onPress={onPress}
+      style={[
+        s.chip,
+        selected && { backgroundColor: colors.green, borderColor: colors.green },
+        style,
+      ]}
     >
-      <Text
-        style={{
-          fontSize: 12,
-          fontWeight: '600',
-          color: ['ready', 'delivered'].includes(stage) ? '#497239' : '#8c6a32',
-        }}
-      >
-        {STAGE_LABELS[stage] || stage}
+      {icon && <Icon name={icon} size={16} color={selected ? 'white' : colors.muted} />}
+      <Text style={{ fontSize: 12, fontWeight: '700', color: selected ? 'white' : colors.muted }}>
+        {children}
       </Text>
+    </Pressable>
+  );
+}
+const badgeColors = {
+  booked: ['#FFF1E7', '#A85E21'],
+  collected: ['#EAF1FF', '#476BC2'],
+  received: ['#EAF1FF', '#476BC2'],
+  cleaning: ['#EEEAFE', '#7761C7'],
+  quality_check: ['#EEEAFE', '#7761C7'],
+  packing: ['#FFF1E7', '#A85E21'],
+  ready: ['#DFF5ED', '#15745C'],
+  out_for_delivery: ['#DFF5ED', '#15745C'],
+  delivered: ['#DFF5ED', '#15745C'],
+  cancelled: ['#FDEAE7', '#AA4E40'],
+};
+export function Badge({ stage }) {
+  const [backgroundColor, color] = badgeColors[stage] || [colors.bg, colors.muted];
+  return (
+    <View style={[s.badge, { backgroundColor }]}>
+      <Text style={{ fontSize: 11, fontWeight: '700', color }}>{STAGE_LABELS[stage] || stage}</Text>
     </View>
   );
 }
@@ -144,13 +223,16 @@ export function Feedback({ error, message }) {
   return error || message ? (
     <View
       accessibilityLiveRegion="polite"
-      style={[s.feedback, error && { backgroundColor: '#fff0e9', borderColor: '#f0cbbb' }]}
+      style={[s.feedback, error && { backgroundColor: '#FFF0EB', borderColor: '#F6D9CE' }]}
     >
       <Icon
         name={error ? 'alert-circle-outline' : 'checkmark-circle-outline'}
-        color={error ? '#9b412c' : colors.green}
+        size={20}
+        color={error ? '#B54735' : colors.green}
       />
-      <Text style={{ flex: 1, color: error ? '#9b412c' : colors.green, lineHeight: 21 }}>
+      <Text
+        style={{ flex: 1, fontSize: 13, color: error ? '#B54735' : colors.green, lineHeight: 19 }}
+      >
         {error?.message || error || message}
       </Text>
     </View>
@@ -158,95 +240,129 @@ export function Feedback({ error, message }) {
 }
 export function Loading() {
   return (
-    <View style={{ padding: 70, alignItems: 'center', gap: 15 }}>
+    <View
+      style={{
+        padding: 38,
+        minHeight: 160,
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 13,
+      }}
+    >
       <ActivityIndicator color={colors.green} />
-      <Body>Getting everything in order…</Body>
+      <Body>Loading your fresh updates…</Body>
     </View>
   );
 }
 export function Empty({ title, children }) {
   return (
-    <View style={{ alignItems: 'center', padding: 30, gap: 15 }}>
-      <Icon name="bag-check-outline" size={40} />
-      <SectionTitle>{title}</SectionTitle>
+    <View
+      style={{
+        alignItems: 'center',
+        padding: 28,
+        gap: 12,
+        backgroundColor: 'white',
+        borderRadius: 22,
+        borderWidth: 1,
+        borderColor: colors.line,
+      }}
+    >
+      <View style={{ padding: 18, borderRadius: 24, backgroundColor: colors.mint }}>
+        <Icon name="bag-check-outline" size={32} />
+      </View>
+      <Text style={{ fontSize: 17, fontWeight: '700', color: colors.ink, textAlign: 'center' }}>
+        {title}
+      </Text>
       <Body style={{ textAlign: 'center' }}>{children}</Body>
     </View>
   );
 }
 export const s = StyleSheet.create({
-  screen: { padding: 22, paddingBottom: 42, maxWidth: 760, width: '100%', alignSelf: 'center' },
-  heading: { marginTop: 16, marginBottom: 25 },
+  screen: {
+    padding: 20,
+    paddingBottom: 32,
+    maxWidth: 760,
+    width: '100%',
+    alignSelf: 'center',
+    flexGrow: 1,
+  },
+  heading: { marginTop: 18, marginBottom: 22 },
   eyebrow: {
     fontSize: 10,
-    fontWeight: '700',
-    letterSpacing: 1.9,
-    color: '#607248',
-    marginBottom: 12,
+    fontWeight: '800',
+    letterSpacing: 1.7,
+    color: colors.green,
+    marginBottom: 8,
   },
   title: {
-    fontSize: 30,
-    lineHeight: 37,
-    fontWeight: '700',
-    letterSpacing: -1.2,
+    fontSize: 28,
+    lineHeight: 35,
+    fontWeight: '800',
+    letterSpacing: -0.9,
     color: colors.ink,
   },
-  subtitle: { fontSize: 15, lineHeight: 23, color: colors.muted, marginTop: 12 },
+  subtitle: { fontSize: 14, lineHeight: 21, color: colors.muted, marginTop: 8 },
   card: {
-    padding: 21,
+    padding: 20,
     backgroundColor: 'white',
-    borderRadius: 18,
+    borderRadius: 22,
     borderWidth: 1,
     borderColor: colors.line,
-    marginBottom: 18,
+    marginBottom: 16,
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: '700',
-    letterSpacing: -0.5,
+    letterSpacing: -0.4,
     color: colors.ink,
-    marginBottom: 15,
+    marginBottom: 12,
   },
   body: { fontSize: 14, color: colors.muted, lineHeight: 22 },
   button: {
     minHeight: 50,
-    padding: 14,
-    borderRadius: 12,
+    padding: 13,
+    borderRadius: 15,
     backgroundColor: colors.green,
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
     gap: 9,
-    marginTop: 10,
+    marginTop: 8,
   },
-  buttonText: { fontSize: 14, fontWeight: '600', color: 'white' },
-  secondary: { backgroundColor: 'white', borderWidth: 1, borderColor: '#d9e2cd' },
-  label: { fontSize: 13, fontWeight: '600', color: colors.ink, marginBottom: 9 },
-  input: {
+  buttonText: { fontSize: 14, fontWeight: '700', color: 'white' },
+  secondary: { backgroundColor: 'white', borderWidth: 1, borderColor: colors.line },
+  label: { fontSize: 13, fontWeight: '600', color: colors.ink, marginBottom: 8 },
+  inputWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#d6dfcd',
-    borderRadius: 10,
-    minHeight: 48,
-    padding: 13,
-    color: colors.ink,
+    borderColor: '#DDE6EB',
+    borderRadius: 14,
+    minHeight: 50,
+    backgroundColor: '#F8FAFC',
+  },
+  input: { flex: 1, minWidth: 0, minHeight: 48, padding: 13, color: colors.ink, fontSize: 15 },
+  chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 25,
     backgroundColor: 'white',
-    fontSize: 15,
+    borderWidth: 1,
+    borderColor: colors.line,
   },
-  badge: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: 10,
-    paddingVertical: 7,
-    borderRadius: 8,
-    backgroundColor: '#fbefd7',
-  },
+  badge: { alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 7, borderRadius: 9 },
   feedback: {
     flexDirection: 'row',
-    gap: 10,
-    padding: 15,
-    borderRadius: 11,
+    gap: 9,
+    padding: 12,
+    borderRadius: 13,
     borderWidth: 1,
-    borderColor: '#d9e7c8',
-    backgroundColor: '#eef4e4',
-    marginBottom: 18,
+    borderColor: '#CDE9DF',
+    backgroundColor: '#EAF8F2',
+    marginBottom: 14,
   },
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
   divider: { height: 1, backgroundColor: colors.line, marginVertical: 18 },

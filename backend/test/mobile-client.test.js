@@ -49,6 +49,9 @@ test('mobile transport completes booking, labels, uncertain scan replay, partial
     retry.clear();
     order = result.order;
   }
+  token = f.users.owner.token;
+  await act('assign', { staffId: f.users.staff.id });
+  token = f.users.staff.token;
   await act('collect', { count: 2 });
   assert.equal((await client('/orders')).orders[0].in_care_count, 2);
   await act('garments', { type: 'Shirt', color: 'Blue' });

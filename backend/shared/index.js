@@ -23,6 +23,10 @@ export const STAGE_LABELS = {
   cancelled: 'Cancelled',
 };
 export const ROLES = ['customer', 'staff', 'owner'];
+export const TICKET_CATEGORIES = {
+  pickup: 'Pickup', delivery: 'Delivery', garment: 'Garment care', billing: 'Billing',
+  account: 'Account', operations: 'Staff operations', other: 'Other',
+};
 export const money = (paise) =>
   new Intl.NumberFormat('en-IN', {
     style: 'currency',

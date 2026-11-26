@@ -1,8 +1,8 @@
 import * as Crypto from 'expo-crypto';
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { View, Text, Pressable, ScrollView } from 'react-native';
-import { router, Redirect } from 'expo-router';
-import { money, canOperate } from '@laundrytrack/shared';
+import { router, Redirect, useLocalSearchParams } from 'expo-router';
+import { money } from '@laundrytrack/shared';
 import { useSession } from '../../lib/session';
 import { useResource } from '../../lib/hooks';
 import { api } from '../../lib/api';
@@ -22,6 +22,7 @@ import {
   s,
 } from '../../components/UI';
 export default function Book() {
+  const params = useLocalSearchParams();
   const { user } = useSession();
   const { data, error, loading } = useResource('/services');
   const [quantities, setQuantities] = useState({});
@@ -37,8 +38,15 @@ export default function Book() {
   const [created, setCreated] = useState(null);
   const requestRef = useRef(user ? cacheGet(`${user.id}:booking-request`) : null);
   const submitting = useRef(false);
+  useEffect(() => {
+    const selected = params.serviceId;
+    if (typeof selected === 'string' && data?.services.some((service) => service.id === selected)) {
+      setQuantities((current) => ({ ...current, [selected]: Math.max(1, current[selected] || 0) }));
+      setCreated(null);
+      router.setParams({ serviceId: undefined });
+    }
+  }, [params.serviceId, data]);
   if (!user) return <Redirect href="/" />;
-  if (canOperate(user)) return <Redirect href="/(tabs)/home" />;
   const services = data?.services || [];
   const count = Object.values(quantities).reduce((n, q) => n + q, 0);
   const total = services.reduce(
@@ -92,7 +100,7 @@ export default function Book() {
             title="We’ll take it from here."
             subtitle={`${created.number} · ${created.expected_count} garments · ${money(created.total)}`}
           />
-          <Card style={{ backgroundColor: '#e9f2dc', width: '100%' }}>
+          <Card style={{ backgroundColor: colors.mint, width: '100%' }}>
             <Body>Your private delivery code</Body>
             <Text
               style={{
@@ -164,7 +172,7 @@ export default function Book() {
                           [service.id]: Math.max(0, (q[service.id] || 0) - 1),
                         }))
                       }
-                      style={{ padding: 9, backgroundColor: '#f0f5e8', borderRadius: 9 }}
+                      style={{ padding: 9, backgroundColor: colors.mint, borderRadius: 9 }}
                     >
                       <Icon name="remove" size={19} />
                     </Pressable>
@@ -178,7 +186,7 @@ export default function Book() {
                       onPress={() =>
                         setQuantities((q) => ({ ...q, [service.id]: (q[service.id] || 0) + 1 }))
                       }
-                      style={{ padding: 9, backgroundColor: '#f0f5e8', borderRadius: 9 }}
+                      style={{ padding: 9, backgroundColor: colors.mint, borderRadius: 9 }}
                     >
                       <Icon name="add" size={19} />
                     </Pressable>
